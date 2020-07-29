@@ -13,21 +13,28 @@ class ServerSide(object):
     def __init__(self, port):
         self.port = port
         self.data = []
-
-    def receive_message(self, received_data, address):
-        if received_data == constants.ENDING:
-            #print(b"".join(self.data).decode(constants.CODING_FORMAT))
-            self.data = []
-        else:
-            header_size = struct.calcsize(constants.DATA_HEADER) 
-            header = struct.unpack(constants.DATA_HEADER, received_data[0:header_size])
-            message = received_data[header_size:]
-            self.data.append((header, message))
-            print((header, message))
-        self.node.sendto(constants.ACK, address) # sending for each segment, should be after each package
+        self.node = None
         
+    def _receive_package(self, address, message) -> bool:
+        header_size = struct.calcsize(constants.DATA_HEADER)
+        while True:
+            package = []
+            for _ in range(constants.SEGMENTS_AMOUNT):
+                segment, _ = self.node.recvfrom(message[2])
+                if segment == constants.ENDING:
+                    return True
+                header = struct.unpack(constants.DATA_HEADER, segment[0:header_size])
+                data = segment[header_size:]
+                package.append((header, data))
+                print((header, data))
+            if len(set(package)) == constants.SEGMENTS_AMOUNT:
+                self.node.sendto(constants.ACK, address)
+                return False
+            else:
+                print("send again.")
+                self.node.sendto(constants.NACK, address)
 
-    def set_socket(self):
+    def _set_socket(self):
         try:
             self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.node.bind(("", self.port))
@@ -37,14 +44,24 @@ class ServerSide(object):
         except (ValueError, TypeError):
             print("Unknown port.")
 
-    def start_listening(self):
-        print(f"[LISTENING] port: {self.port}")
-        self.set_socket()
+    def _handle_communication(self, communication_start, address):
+        message = struct.unpack(constants.STARTING_HEADER, communication_start)
+        self.node.sendto(constants.ACK, address)
         while True:
-            data, address = self.node.recvfrom(1024)
-
             with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
-                thread = executor.submit(self.receive_message, data, address)
-                thread.result()
+                thread = executor.submit(self._receive_package, address, message)
+                if thread.result():
+                    break
+
+
+    def start_listening(self):
+        if not self.node:
+            self._set_socket()
+        while True:
+            print(f"[LISTENING] port: {self.port}")
+            initial_segment, address = self.node.recvfrom(constants.STARTING_HEADER_SIZE)
+            self._handle_communication(initial_segment, address)
+            if input("Press q for ending session, or any key to continue.") == "q":
+                break
 
 ServerSide(5555).start_listening()

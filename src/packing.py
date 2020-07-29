@@ -1,3 +1,4 @@
+from math import ceil
 import constants
 
 class FragmentPacking():
@@ -7,6 +8,19 @@ class FragmentPacking():
         self.data_type = data_type
         self.file_name = file_name
         self.fragment_size = fragment_size
+
+    def get_fragment_amount(self):
+        # return amount of all segment from the file
+        return ceil(self.fragment_size/self.data_size) 
+
+    def get_starting_header(self):
+        #TODO: datatype, datapath checksum of datapath
+        # Fragments amount + Fragment size + Checksum + Data Type
+        return (self.get_fragment_amount(), 
+                self.fragment_size, 
+                69,
+                self.data_type.encode(constants.CODING_FORMAT))
+                #, self.file_path if exists 
 
     def _split_package_data(self, sub_array, segment_size, offset):
         """ Splits package to the even sized segments"""

@@ -22,10 +22,9 @@ class ClientSide(object):
         self.content = content
         self.fragment_amount = content.calculate_fragments_amount()
 
-    def send_data(self):
-        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        segment_counter = 0
-        for package in self.content.split_data():
+    def _send_package(self, package, segment_counter):
+        package_sent_correctly = False
+        while not package_sent_correctly:
             for fragment in package:
                 fragment = fragment.encode(constants.CODING_FORMAT)
 
@@ -35,26 +34,24 @@ class ClientSide(object):
 
                 self.node.sendto(header + fragment, self.reciever)
                 segment_counter += 1
-            
+                
             respond, _ = self.node.recvfrom(2)
             if respond == constants.ACK:
-                pass
-            else:
+                package_sent_correctly = True
+            elif respond == constants.NACK:
                 print("Something went wrong.")
-            """
-            while True:
-                for segment in package:
-                    self.node.sendto(segment, self.reciever)
-                respond, _ = self.node.recvfrom(2)
-                if respond == packing.ACK:
-                    break
-                elif respond == packing.NACK:
-                    while True:
-                        index, _ = self.node.recvfrom(1024)
-                        with ThreadPoolExecutor(max_workers=5) as executor:
-                            thread = executor.submit(lambda index, package: package[index],package, int(index))
-                            thread.result()
-            """
+
+    def send_data(self):
+        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        segment_counter = 0
+        starting_message = struct.pack(constants.STARTING_HEADER, 
+                                            *self.content.get_starting_header())
+        self.node.sendto(starting_message, self.reciever)
+        for package in self.content.split_data():
+            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
+                thread = executor.submit(self._send_package, package, segment_counter)
+                segment_counter += 10
+                thread.result()
 
         self.node.sendto(constants.ENDING, self.reciever)
 
