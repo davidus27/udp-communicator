@@ -3,11 +3,11 @@ import struct
 import socket
 import time
 import os
+import constants
 
-import packing
 
-MAXIMUM_THREADS = 5
-
+def calculate_checksum(fragment):
+    return sum(fragment) % 255
 
 class ServerSide(object):
     def __init__(self, port):
@@ -15,12 +15,16 @@ class ServerSide(object):
         self.data = []
 
     def receive_message(self, received_data, address):
-        if received_data == packing.ENDING:
-            print(b"".join(self.data).decode(packing.CODING_FORMAT))
+        if received_data == constants.ENDING:
+            #print(b"".join(self.data).decode(constants.CODING_FORMAT))
             self.data = []
         else:
-            self.data.append(received_data)
-        self.node.sendto(packing.ACK, address)
+            header_size = struct.calcsize(constants.DATA_HEADER) 
+            header = struct.unpack(constants.DATA_HEADER, received_data[0:header_size])
+            message = received_data[header_size:]
+            self.data.append((header, message))
+            print((header, message))
+        self.node.sendto(constants.ACK, address) # sending for each segment, should be after each package
         
 
     def set_socket(self):
@@ -38,8 +42,8 @@ class ServerSide(object):
         self.set_socket()
         while True:
             data, address = self.node.recvfrom(1024)
-            
-            with ThreadPoolExecutor(max_workers=MAXIMUM_THREADS) as executor:
+
+            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
                 thread = executor.submit(self.receive_message, data, address)
                 thread.result()
 
