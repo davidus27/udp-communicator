@@ -18,15 +18,13 @@ class ClientSide(object):
 
     def send_fragment(self):
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        count = 0
-        for package in self.content.split_data(10):
+        for package in self.content.split_data():
             for segment in package:
                 self.node.sendto(segment, self.reciever)
             
             respond, _ = self.node.recvfrom(2)
             if respond == packing.ACK:
-                print("Counter:", count, package)
-                count+=1
+                pass
             else:
                 print("Something went wrong.")
             """
@@ -44,7 +42,7 @@ class ClientSide(object):
                             thread.result()
             """
 
-        #self.node.sendto(b"KONIEC", self.reciever)
+        self.node.sendto(packing.ENDING, self.reciever)
 
 
 lorem = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."

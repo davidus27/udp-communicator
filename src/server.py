@@ -15,14 +15,12 @@ class ServerSide(object):
         self.data = []
 
     def receive_message(self, received_data, address):
-        self.data.append(received_data)
-        self.node.sendto(packing.ACK, address)
-
-        #Only testing
-        if len(self.data) > 57:
-        #if self.node.recvfrom(6)[0] == b"KONIEC":
+        if received_data == packing.ENDING:
             print(b"".join(self.data).decode(packing.CODING_FORMAT))
             self.data = []
+        else:
+            self.data.append(received_data)
+        self.node.sendto(packing.ACK, address)
         
 
     def set_socket(self):

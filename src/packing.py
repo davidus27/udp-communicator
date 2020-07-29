@@ -5,6 +5,7 @@ SEGMENTS_AMOUNT = 10 # how many segments will be sent at once
 ACK = b"OK"
 NACK = b"ERROR"
 KEEP_ALIVE = b"KA"
+ENDING = b"END."
 
 class FragmentPacking():
     # TODO: write down all these packing formats
@@ -25,11 +26,11 @@ class FragmentPacking():
         return [sub_array[i: i+segment_size].encode(CODING_FORMAT) for i in range(0,len(sub_array), segment_size)]
 
 
-    def split_data(self, header_size):
+    def split_data(self):
         """
         Splits the data into packages
         """
-        segment_size = self.fragment_size - header_size
+        segment_size = self.fragment_size - 6
         package_size = segment_size * SEGMENTS_AMOUNT
 
         #yield [struct.pack(self.TEXT_MESSAGE_HEADER, self.calculate_checksum())]
