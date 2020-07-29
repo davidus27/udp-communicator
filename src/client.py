@@ -1,10 +1,7 @@
 import socket
 import struct
 from concurrent.futures import ThreadPoolExecutor
-import packing
 import constants
-
-IP_ADDRESS = socket.gethostbyname(socket.gethostname())
 
 """
 Segment = one part of whole data
@@ -17,7 +14,7 @@ def calculate_checksum(fragment):
 
 
 class ClientSide(object):
-    def __init__(self, reciever: tuple, content: packing.FragmentPacking):
+    def __init__(self, reciever: tuple, content):
         self.reciever = reciever
         self.content = content
         self.fragment_amount = content.calculate_fragments_amount()
@@ -54,8 +51,3 @@ class ClientSide(object):
                 thread.result()
 
         self.node.sendto(constants.ENDING, self.reciever)
-
-
-lorem = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
-f = packing.FragmentPacking(lorem, "t", 20)
-ClientSide((IP_ADDRESS, 5555), f).send_data()
