@@ -1,0 +1,9 @@
+CODING_FORMAT = "utf-8"
+ACK = b"OK"
+NACK = b"ERROR"
+KEEP_ALIVE = b"KA"
+ENDING = b"END."
+STARTING_HEADER = "bIhh" # Data Type + Fragments amount + Fragment size + Checksum
+DATA_HEADER = "ih"
+SEGMENTS_AMOUNT = 10 # how many segments will be sent at once
+MAXIMUM_THREADS = 5
