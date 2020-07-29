@@ -5,6 +5,8 @@ import time
 import os
 import constants
 
+#checkit
+from packing import FragmentPacking
 
 def calculate_checksum(fragment):
     return sum(fragment) % 255
@@ -22,11 +24,12 @@ class ServerSide(object):
             for _ in range(constants.SEGMENTS_AMOUNT):
                 segment, _ = self.node.recvfrom(message[2])
                 if segment == constants.ENDING:
+                    print("Recieved END segment. Ending session.")
                     return True
                 header = struct.unpack(constants.DATA_HEADER, segment[0:header_size])
                 data = segment[header_size:]
                 package.append((header, data))
-                print((header, data))
+                print(f"Segment {header[0]} of size: {message[1]}")
             if len(set(package)) == constants.SEGMENTS_AMOUNT:
                 self.node.sendto(constants.ACK, address)
                 return False
@@ -34,15 +37,19 @@ class ServerSide(object):
                 print("send again.")
                 self.node.sendto(constants.NACK, address)
 
+    def _process_data(self):
+        pass
+
     def _set_socket(self):
-        try:
-            self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.node.bind(("", self.port))
-        except PermissionError as e:
-            print("Well known port used.")
-            print(e)
-        except (ValueError, TypeError):
-            print("Unknown port.")
+        if not self.node:
+            try:
+                self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.node.bind(("", self.port))
+            except PermissionError as e:
+                print("Well known port used.")
+                print(e)
+            except (ValueError, TypeError):
+                print("Unknown port.")
 
     def _handle_communication(self, communication_start, address):
         message = struct.unpack(constants.STARTING_HEADER, communication_start)
@@ -51,17 +58,15 @@ class ServerSide(object):
             with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
                 thread = executor.submit(self._receive_package, address, message)
                 if thread.result():
-                    break
+                    self._process_data()
+                    return
 
 
     def start_listening(self):
-        if not self.node:
-            self._set_socket()
+        self._set_socket()
         while True:
             print(f"[LISTENING] port: {self.port}")
             initial_segment, address = self.node.recvfrom(constants.STARTING_HEADER_SIZE)
             self._handle_communication(initial_segment, address)
             if input("Press q for ending session, or any key to continue.") == "q":
                 break
-
-ServerSide(5555).start_listening()
