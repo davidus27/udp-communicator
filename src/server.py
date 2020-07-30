@@ -39,14 +39,15 @@ class ServerSide(object):
             else:
                 print("send again.")
                 self.node.sendto(constants.NACK, address)
-    def _lol(self):
+
+    def get_raw_data(self):
         for item in self.data:
             yield item[1].decode(constants.CODING_FORMAT)
 
     def _process_data(self):
         self.data.sort(key=operator.itemgetter(0), reverse=True)
         if self.header.data_type.decode(constants.CODING_FORMAT).upper() == "M":
-            print("".join(self._lol()))
+            print("".join(self.get_raw_data()))
         else:
             try:
                 with open(self.header.file_path, "w") as f:

@@ -9,8 +9,7 @@ class StartingInfo:
         self.fragments_amount = fragment_amount
         self.fragment_size = fragment_size
         self.data_type = data_type
-        if file_path:
-            self.file_path = file_path
+        self.file_path = file_path
 
 
 class FragmentPacking():
