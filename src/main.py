@@ -1,7 +1,7 @@
 from server import ServerSide
 from client import ClientSide
-from packing import FragmentPacking
 from socket import gethostbyname, gethostname
+import packing
 
 class SettingStrategy():
     def __init__(self):
@@ -17,12 +17,12 @@ class SettingStrategy():
         return ip, port
 
     def _ask_data_info(self):
-        file_type = input("Do you want to send file or message? [M/f] ")
-        if file_type.upper() == "F":
+        data_type = input("Do you want to send file or message? [M/f]: ")
+        if data_type.upper() == "F":
             file_path = input("Input file path: ")
-            with open(file_path) as f:
+            with open(file_path, "r") as f:
                 data = f.read()
-        elif file_type.upper() == "M":
+        elif data_type.upper() == "M" or data_type == "":
             data = input("Input the message: ")
         else:
             print("Wrong input")
@@ -32,9 +32,9 @@ class SettingStrategy():
             print("Wrong input")
             return
         try:
-            x = (data, file_type, fragment_size, file_path)
+            x = (data, fragment_size, data_type, file_path)
         except Exception:
-            x = (data, file_type, fragment_size)
+            x = (data, fragment_size, data_type)
         finally:
             return x
 
@@ -42,19 +42,24 @@ class SettingStrategy():
         args = False
         while not args:
             args = self._ask_data_info()
-        self.arguments.append(FragmentPacking(*args))
+        #data, fragment_size, data_type, file_path
+        header = packing.StartingInfo(0, *args[1:]) # fragment amount is not needed
+        self.arguments.append(packing.FragmentPacking(header, args[0])) # header, data
 
 
     def get_strategy(self):
         if self._strategy is ServerSide:
-            self.arguments.append(input("Input port: "))
+            self.arguments.append(int(input("Input port: ")))
         elif self._strategy is ClientSide:
             self.add_receiver_args()
             self.add_data_info()
         else:
             print("Error.")
         return self._strategy(*self.arguments)
-
+    def clear_options(self):
+        self.arguments = []
+        self._strategy = None
+        
     def execute_side(self):
         """
         Execute sides needed parts
@@ -67,8 +72,13 @@ class SettingStrategy():
             elif side.upper() == "S" or side == "":
                 self._strategy = ServerSide
                 self.get_strategy().start_listening()
+            elif side.upper() == "Q":
+                break
+            if input("Press q for ending session, or any key to continue.") == "q":
+                break
             else:
                 print("Wrong input. Try again.")
+            self.clear_options()
 
 
 if __name__ == "__main__":

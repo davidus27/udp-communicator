@@ -17,7 +17,7 @@ class ClientSide(object):
     def __init__(self, reciever: tuple, content):
         self.reciever = reciever
         self.content = content
-        self.fragment_amount = content.calculate_fragments_amount()
+        self.fragments_amount = content.calculate_fragments_amount()
 
     def _send_package(self, package, segment_counter):
         package_sent_correctly = False
