@@ -20,10 +20,12 @@ class SettingStrategy():
         data_type = input("Do you want to send file or message? [M/f]: ")
         if data_type.upper() == "F":
             file_path = input("Input file path: ")
-            with open(file_path, "r") as f:
+            data_type = "F"
+            with open(file_path, "rb") as f:
                 data = f.read()
         elif data_type.upper() == "M" or data_type == "":
-            data = input("Input the message: ")
+            data = input("Input the message: ").encode("utf-8")
+            data_type = "M"
         else:
             print("Wrong input")
             return

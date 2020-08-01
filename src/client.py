@@ -2,17 +2,11 @@ import socket
 import struct
 from concurrent.futures import ThreadPoolExecutor
 import constants
-import ntpath
 
 """
 Segment = one part of whole data
 Package = Group of segments that are sent together
 """
-
-
-def get_file_name(path):    
-    head, tail = ntpath.split(path)
-    return tail or ntpath.basename(head)
 
 def calculate_checksum(fragment):
     return sum(fragment) % 255
@@ -28,7 +22,8 @@ class ClientSide(object):
         package_sent_correctly = False
         while not package_sent_correctly:
             for fragment in package:
-                fragment = fragment.encode(constants.CODING_FORMAT)
+                #if type(fragment) is str:
+                #    fragment = fragment.encode(constants.CODING_FORMAT)
 
                 header = struct.pack(constants.DATA_HEADER, 
                                         segment_counter, 

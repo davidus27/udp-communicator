@@ -1,15 +1,24 @@
 from math import ceil
 import constants
+import ntpath
+
 
 def calculate_checksum(fragment):
     return sum(fragment) % 255
+
+
 
 class StartingInfo:
     def __init__(self, fragment_amount: int, fragment_size: int, data_type: str, file_path=None):
         self.fragments_amount = fragment_amount
         self.fragment_size = fragment_size
         self.data_type = data_type
-        self.file_path = file_path
+        self.file_path = self._get_file_name(file_path)
+
+    def _get_file_name(self, path):
+        if path:
+            head, tail = ntpath.split(path)
+            return tail or ntpath.basename(head)
 
 
 class FragmentPacking():
@@ -25,7 +34,7 @@ class FragmentPacking():
     def fragment_amount(self):
         # return amount of all segment from the file
         if self.data:
-            return ceil(self.header.fragment_size/self.data_size) 
+            return ceil(self.data_size/self.header.fragment_size) 
         return 0
     
     def get_starting_header(self):

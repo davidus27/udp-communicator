@@ -45,14 +45,14 @@ class ServerSide(object):
             yield item[1].decode(constants.CODING_FORMAT)
 
     def _process_data(self):
-        self.data.sort(key=operator.itemgetter(0), reverse=True)
-        if self.header.data_type.decode(constants.CODING_FORMAT).upper() == "M":
+        self.data.sort(key=operator.itemgetter(0))
+        if self.header.data_type.upper() == b"M":
             print("".join(self.get_raw_data()))
         else:
             try:
-                with open(self.header.file_path, "w") as f:
+                with open(self.header.file_path, "wb+") as f:
                     for d in self.data:
-                        f.write(d)
+                        f.write(d[1])
             except:
                 print("No option available")
 
@@ -94,5 +94,5 @@ class ServerSide(object):
     def start_listening(self):
         if self._set_socket():
             print(f"[LISTENING] port: {self.port}")
-            initial_segment, address = self.node.recvfrom(constants.STARTING_HEADER_SIZE)
+            initial_segment, address = self.node.recvfrom(constants.STARTING_HEADER_SIZE+40)
             self._handle_communication(initial_segment, address)
