@@ -3,9 +3,10 @@ import struct
 import socket
 import time
 import os
+import math
+import sys
 import constants
 import operator
-#checkit
 from packing import calculate_checksum
 
 class ServerSide(object):
@@ -50,6 +51,10 @@ class ServerSide(object):
             # if all are correct save whole package to the self.data
             else:
                 #self.node.sendto(constants.ACK, address)
+
+                progress = math.ceil(100 * len(self.data) / self.starting_header[0])
+                sys.stdout.write("Downloading file : %d%%   \r" % (progress) )
+                sys.stdout.flush()
                 self.save_package(package)
                 response = constants.ACK
 

@@ -2,6 +2,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor
 import constants
 import packing
+import sys
 
 """
 Segment = one part of whole data
@@ -16,6 +17,7 @@ class ClientSide(object):
 
     def _send_package(self, package, segment_counter):
         package_sent_correctly = False
+        temp = segment_counter
         while not package_sent_correctly:
             for fragment_data in package:
                 fragment = self.content.get_segment(fragment_data, segment_counter)
@@ -25,6 +27,11 @@ class ClientSide(object):
             respond, _ = self.node.recvfrom(5) # OK or ERROR
             if respond == constants.ACK:
                 package_sent_correctly = True
+                #print(f"Package: {temp} - {segment_counter} sent correctly")
+
+                sys.stdout.write(f"Package {temp} - {segment_counter} sent correctly \r")
+                sys.stdout.flush()
+
             elif respond == constants.NACK:
                 print("Something went wrong.")
 
