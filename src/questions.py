@@ -4,6 +4,7 @@ from socket import gethostbyname, gethostname
 MIN_FRAGMENT_SIZE = 50
 MAX_FRAGMENT_SIZE = 1466
 
+# Getting input from the files
 
 def ask_again(function):
     def decorate(*args):
