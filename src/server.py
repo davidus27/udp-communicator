@@ -98,12 +98,10 @@ class ServerSide(object):
         if self.starting_header[3] == b"M":
             print("".join(self.get_raw_data()))
             return
-        try:
-            with open(self.file_path, "wb+") as f:
-                for d in self.data:
-                    f.write(d[1])
-        except:
-            print("No option available")
+            
+        with open(self.file_path, "wb+") as f:
+            for d in self.data:
+                f.write(d[1])
 
     def set_socket(self):
         try:
