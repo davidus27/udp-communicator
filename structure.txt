@@ -1,7 +1,0 @@
-
-TODO: 
-    zmen rozdelenie paketov
-
-    uprav hlavicky v komunikacii
- 
-    implementuj hlavny algoritmus komunikacie
