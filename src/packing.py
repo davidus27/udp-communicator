@@ -79,3 +79,6 @@ class StartingFragment():
         for offset in range(0, self.data_size, package_data_size):
             package_data = self.data[offset: offset + package_data_size]
             yield self._split_package_data(package_data, self.fragment_data_size, offset)
+
+    def yield_segments(self):
+        pass

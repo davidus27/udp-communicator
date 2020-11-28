@@ -7,50 +7,72 @@ import os
 import math
 import sys
 import constants
-import operator
+from segments import *
+
 
 class ProcessRecievedData(object):
-    def __init__(self):
-        pass
-
     @staticmethod
-    def separate_data_segment(segment) -> tuple:
+    def separate_data_segment(segment) -> DataSegment:
         """ Separate information in the received segment"""
         header = struct.unpack(constants.DATA_HEADER, segment[0:constants.DATA_HEADER_SIZE])
-        data = segment[constants.DATA_HEADER_SIZE:]
-        return header[0], header[1], data  # Index, Checksum, Data
+        data = segment[constants.DATA_HEADER_SIZE:] 
+        return DataSegment(*header, data) # Index, Checksum, Data
 
     @staticmethod
-    def separate_starting_header(starting_segment) -> tuple:
+    def separate_starting_header(starting_segment) -> StartingSegment:
         #TODO: check alternative constant
         header = struct.unpack(constants.STARTING_HEADER, starting_segment[:constants.STARTING_HEADER_SIZE])
         file_path = starting_segment[constants.STARTING_HEADER_SIZE:]
         # Fragments amount + Fragment size + Checksum + Data Type + file_path
-        return header[0], header[1], header[2], header[3], file_path # if message recieved file_path == b''
+        return StartingSegment(*header, file_path)
 
-    @staticmethod
-    def has_valid_checksum(header, file_path = 0) -> bool:
-        # Fragments amount + Fragment size + Checksum + Data Type + file_path
-        header_without_checksum = struct.pack(constants.STARTING_HEADER_WO_CHECKSUM, 
-                        header[0],
-                        header[1],
-                        header[3]
-                )
-        #header[2] - checksum
-        return header[2] == calculate_checksum(header_without_checksum, file_path)
 
 class ServerSide(object):
     def __init__(self, port):
         self.port = port
         self.data = []
-        self.file_path = None
-        # starting header: segment amount, segment size, data type, checksum
-        self.starting_header = None
+        self.address = None
+        self.starting_header = None # starting header: segment amount, segment size, checksum, data type
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    def save_package(self, package):
+    def save_package(self, package) -> None:
         for fragment in package:
             self.data.append(fragment)
+
+    def get_raw_data(self) -> str:
+        for item in self.data:
+            yield item[1].decode(constants.CODING_FORMAT)
+
+    def _process_data(self) -> None:
+        """ Function to either print message, or save the recieved file """
+        self.data.sort(key=lambda x : x[0])
+        if self.starting_header[3] == b"M":
+            # print("".join(self.get_raw_data()))
+            print(b"".join(self.data).decode(constants.CODING_FORMAT)) # TODO: CHECK IF CORRECT 
+        with open(self.file_path, "wb+") as f:
+            for d in self.data:
+                f.write(d[1])
+
+    def set_socket(self) -> None:
+        """ Sets the socket binding with the posibility of resusing the same port """
+        try:
+            self.node.bind(("", self.port))
+            self.node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # fix of 'port already used'
+            return self.node
+        except PermissionError as e:
+            print(e)
+        except (ValueError, TypeError):
+            print("Unknown port.")
+
+    def recieved_everything(self) -> bool:
+        """ Checking if all fragments were sent """
+        return len(set(self.data)) == self.starting_header.fragments_amount
+
+    def print_progress(self) -> None:
+        """ Printing progress bar for estetics """
+        progress = math.ceil(100 * len(self.data) / self.starting_header.fragments_amount)
+        sys.stdout.write("Downloading file : %d%%   \r" % (progress) )
+        sys.stdout.flush()
 
     def _receive_package(self, address) -> bool:
         while True:
@@ -58,8 +80,8 @@ class ServerSide(object):
             error_segment_indexes = []
             for _ in range(constants.SEGMENTS_AMOUNT):
                 segment, _ = self.node.recvfrom(self.starting_header[1])
-                if segment == constants.ENDING:
-                    print("Recieved END segment. Ending session.")
+                if segment == constants.END:
+                    print("Recieved END segment. END session.")
                     break
                 index, checksum, data = ProcessRecievedData.separate_data_segment(segment)
                 if checksum == calculate_checksum(struct.pack(constants.FRAGMENT_INDEX, index), data):
@@ -75,70 +97,64 @@ class ServerSide(object):
             # if all are correct save whole package to the self.data
             else:
                 #self.node.sendto(constants.ACK, address)
-
-                progress = math.ceil(100 * len(self.data) / self.starting_header[0])
-                sys.stdout.write("Downloading file : %d%%   \r" % (progress) )
-                sys.stdout.flush()
                 self.save_package(package)
                 response = constants.ACK
-
             self.node.sendto(response, address)
 
-            if len(set(self.data)) == self.starting_header[0]:
-                print("Got all packages, ending this session.")
-                return True
-            return False
-
-    def get_raw_data(self):
-        for item in self.data:
-            yield item[1].decode(constants.CODING_FORMAT)
-
-    def _process_data(self):
-        self.data.sort(key=operator.itemgetter(0))
-        if self.starting_header[3] == b"M":
-            print("".join(self.get_raw_data()))
-            return
-            
-        with open(self.file_path, "wb+") as f:
-            for d in self.data:
-                f.write(d[1])
-
-    def set_socket(self):
-        try:
-            self.node.bind(("", self.port))
-            return self.node
-        except PermissionError as e:
-            print(e)
-        except (ValueError, TypeError):
-            print("Unknown port.")
 
 
-    def _handle_communication(self, address):
+    def send_NACK(self, index : int) -> None:
+        response = struct.pack(constants.FRAGMENT_INDEX, index) + constants.NACK
+        response += calculate_checksum(response)
+        self.node.sendto(response, self.address)
+
+    def send_ACK(self, index : int) -> None:
+        response = struct.pack(constants.FRAGMENT_INDEX, index) + constants.ACK
+        response += calculate_checksum(response)
+        self.node.sendto(response, self.address)
+
+    def process_segment(self, segment : DataSegment) -> None:
+        """ Check if segment is correct, save it or drop it and reply to the client """
+        processed_segment = ProcessRecievedData.separate_data_segment(segment)
+        if processed_segment.has_valid_checksum():
+            # save segment
+            self.data.append(processed_segment.index, processed_segment.data) 
+            self.send_ACK()
+        else:
+            self.send_NACK()
+        self.print_progress()
+
+    def handle_communication(self):
+        """ Listen on port for segment, if recieved create new thread so it can be processed """
+        while not self.recieved_everything():
+            segment, _ = self.node.recvfrom(self.starting_header.fragment_size)
+            if segment == constants.END:
+                # should contain waiting for END ACK
+                print("Recieved END segment. END session.")
+                return
+            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor: 
+                thread = executor.submit(self.process_segment, segment)
+                thread.result()
+
+    def create_connection(self) -> None:
+        """ Wait for start of connection """
         while True:
-            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
-                thread = executor.submit(self._receive_package, address)
-                if thread.result():
-                    self._process_data()
-                    return
+            initial_segment, self.address = self.node.recvfrom(constants.MAX_STARTING_HEADER_SIZE)
+            starting_header = ProcessRecievedData.separate_starting_header(initial_segment)
 
-
-    def initialize_connection(self):
-        while True:
-            initial_segment, address = self.node.recvfrom(constants.MAX_STARTING_HEADER_SIZE)
-            
-            *header, file_path = ProcessRecievedData.separate_starting_header(initial_segment)
-
-            if ProcessRecievedData.has_valid_checksum(header, file_path):
-                self.starting_header = header
-                self.file_path = file_path
-                self.node.sendto(constants.ACK, address)
-                return address
+            if starting_header.has_valid_checksum():
+                self.starting_header = starting_header
+                self.node.sendto(constants.ACK, self.address)
             else:
-                self.node.sendto(constants.NACK, address)
+                self.node.sendto(constants.NACK, self.address)
                 print("SOMETHING IS WRONG") # TODO : DELETE
     
-    def start_listening(self):
+    def start_listening(self) -> None:
+        """ 
+        Main function of class. 
+        Listens on the port, creates connection and handles it.
+        """
         if self.set_socket():
             print(f"[LISTENING] port: {self.port}")
-            address = self.initialize_connection()
-            self._handle_communication(address)
+            self.create_connection()
+            self.handle_communication()
