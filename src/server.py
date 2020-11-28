@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from packing import calculate_checksum
 import struct
 import socket
 import time
@@ -7,7 +8,36 @@ import math
 import sys
 import constants
 import operator
-from packing import calculate_checksum
+
+class ProcessRecievedData(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def separate_data_segment(segment) -> tuple:
+        """ Separate information in the received segment"""
+        header = struct.unpack(constants.DATA_HEADER, segment[0:constants.DATA_HEADER_SIZE])
+        data = segment[constants.DATA_HEADER_SIZE:]
+        return header[0], header[1], data  # Index, Checksum, Data
+
+    @staticmethod
+    def separate_starting_header(starting_segment) -> tuple:
+        #TODO: check alternative constant
+        header = struct.unpack(constants.STARTING_HEADER, starting_segment[:constants.STARTING_HEADER_SIZE])
+        file_path = starting_segment[constants.STARTING_HEADER_SIZE:]
+        # Fragments amount + Fragment size + Checksum + Data Type + file_path
+        return header[0], header[1], header[2], header[3], file_path # if message recieved file_path == b''
+
+    @staticmethod
+    def has_valid_checksum(header, file_path = 0) -> bool:
+        # Fragments amount + Fragment size + Checksum + Data Type + file_path
+        header_without_checksum = struct.pack(constants.STARTING_HEADER_WO_CHECKSUM, 
+                        header[0],
+                        header[1],
+                        header[3]
+                )
+        #header[2] - checksum
+        return header[2] == calculate_checksum(header_without_checksum, file_path)
 
 class ServerSide(object):
     def __init__(self, port):
@@ -17,12 +47,6 @@ class ServerSide(object):
         # starting header: segment amount, segment size, data type, checksum
         self.starting_header = None
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    def separate_segment(self, segment):
-        header_size = struct.calcsize(constants.DATA_HEADER)
-        header = struct.unpack(constants.DATA_HEADER, segment[0:header_size])
-        data = segment[header_size:]
-        return header, data
     
     def save_package(self, package):
         for fragment in package:
@@ -37,11 +61,11 @@ class ServerSide(object):
                 if segment == constants.ENDING:
                     print("Recieved END segment. Ending session.")
                     break
-                header, data = self.separate_segment(segment)
-                if header[1] == calculate_checksum(struct.pack("i", header[0]), data):
-                    package.append((header[0], data))
+                index, checksum, data = ProcessRecievedData.separate_data_segment(segment)
+                if checksum == calculate_checksum(struct.pack(constants.FRAGMENT_INDEX, index), data):
+                    package.append((index, data))
                 else:
-                    error_segment_indexes.append(header[0])
+                    error_segment_indexes.append(index)
                     print("Incorrect checksum.")
 
             # ask for the correct ones if some errors were issued
@@ -64,22 +88,22 @@ class ServerSide(object):
                 print("Got all packages, ending this session.")
                 return True
             return False
-            
+
     def get_raw_data(self):
         for item in self.data:
             yield item[1].decode(constants.CODING_FORMAT)
 
     def _process_data(self):
         self.data.sort(key=operator.itemgetter(0))
-        if self.starting_header[2] == b"M":
+        if self.starting_header[3] == b"M":
             print("".join(self.get_raw_data()))
-        else:
-            try:
-                with open(self.file_path, "wb+") as f:
-                    for d in self.data:
-                        f.write(d[1])
-            except:
-                print("No option available")
+            return
+        try:
+            with open(self.file_path, "wb+") as f:
+                for d in self.data:
+                    f.write(d[1])
+        except:
+            print("No option available")
 
     def set_socket(self):
         try:
@@ -90,14 +114,6 @@ class ServerSide(object):
         except (ValueError, TypeError):
             print("Unknown port.")
 
-    def _split_starting_header(self, starting_segment) -> tuple:
-        #TODO: check alternative constant
-        header_size = constants.STARTING_HEADER_SIZE
-        header = struct.unpack(constants.STARTING_HEADER, starting_segment[0:header_size])
-        checksum = starting_segment[header_size]
-        file_path = starting_segment[header_size+1:]
-        return header, checksum, file_path
-
 
     def _handle_communication(self, address):
         while True:
@@ -107,27 +123,21 @@ class ServerSide(object):
                     self._process_data()
                     return
 
-    def _correct_header_caught(self, initial_segment, address) -> bool:
-        header, checksum, file_path = self._split_starting_header(initial_segment)
-        
-        h = initial_segment[:constants.STARTING_HEADER_SIZE]
-        if checksum == calculate_checksum(h, file_path): #TODO: not correct
-            self.starting_header = header
-            self.file_path = file_path
-            self.node.sendto(constants.ACK, address)
-            return True
-        else:
-            print("Checksum mismatch.")
-            self.node.sendto(constants.NACK, address)
-            return False
 
     def initialize_connection(self):
-        initialized = False
-        while not initialized:
-            initial_segment, address = self.node.recvfrom(constants.STARTING_HEADER_SIZE
-                                                            +constants.MAX_FILE_NAME_SIZE)
-            initialized = self._correct_header_caught(initial_segment, address)
-        return address
+        while True:
+            initial_segment, address = self.node.recvfrom(constants.MAX_STARTING_HEADER_SIZE)
+            
+            *header, file_path = ProcessRecievedData.separate_starting_header(initial_segment)
+
+            if ProcessRecievedData.has_valid_checksum(header, file_path):
+                self.starting_header = header
+                self.file_path = file_path
+                self.node.sendto(constants.ACK, address)
+                return address
+            else:
+                self.node.sendto(constants.NACK, address)
+                print("SOMETHING IS WRONG") # TODO : DELETE
     
     def start_listening(self):
         if self.set_socket():
