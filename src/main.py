@@ -1,6 +1,6 @@
 from server import ServerSide
 from client import ClientSide
-from packing import StartingFragment
+from packing import Packaging
 import questions
 
 class SettingStrategy():
@@ -12,7 +12,7 @@ class SettingStrategy():
         args = None
         while not args:
             args = self._ask_for_header_info()
-        self.arguments.append(StartingFragment(args[0], args[1:]))
+        self.arguments.append(Packaging(args[0], args[1:]))
 
     def get_strategy(self):
         if self._strategy is ServerSide:
@@ -21,7 +21,7 @@ class SettingStrategy():
             self.arguments.append(questions.ask_for_recipient())
 
             header = questions.ask_for_header_info()
-            self.arguments.append(StartingFragment(header[0], header[1:]))
+            self.arguments.append(Packaging(header[0], header[1:]))
         else:
             print("Error.")
         return self._strategy(*self.arguments)

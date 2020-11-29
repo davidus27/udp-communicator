@@ -5,7 +5,9 @@ import struct
 
 
 def calculate_checksum(*args):
-    string = b"".join(args)
+    # Filter None and empty lists 
+    new_args = list(filter(lambda x : x, args))
+    string = b"".join(new_args)
     return sum(string) % 65535 # 2**16
 
 def get_file_name(path):
@@ -15,7 +17,7 @@ def get_file_name(path):
     return None
 
 
-class StartingFragment():
+class Packaging():
     def __init__(self, data: bytes, header_info: tuple):
         # header_info : fragment_size, data_type.upper(), (file_path)
         self.header_info = header_info
@@ -37,12 +39,12 @@ class StartingFragment():
             return ceil(self.data_size/(self.fragment_data_size))
         return 0
     
-    def get_data_segment(self, fragment_data, index):
+    def get_data_segment(self, index, fragment_data):
         header = struct.pack(constants.FRAGMENT_INDEX, index)
         header += struct.pack(constants.CHECKSUM, calculate_checksum(header, fragment_data))
         return header + fragment_data
 
-    def get_segment(self, checksum):
+    def get_starting_header(self, checksum):
         return struct.pack(constants.STARTING_HEADER,
                 self.fragments_amount,
                 self.header_info[0],
@@ -61,24 +63,14 @@ class StartingFragment():
         if self.header_info[1] == b'F': # if data type is a file
             file_path = get_file_name(self.header_info[2]) # add sliced file_path
             checksum = calculate_checksum(check, file_path)
-            header = self.get_segment(checksum)
+            header = self.get_starting_header(checksum)
             header += file_path            
         else:
             # message is sent, so only checksum was added
             checksum = calculate_checksum(check)
-            header = self.get_segment(checksum)
+            header = self.get_starting_header(checksum)
         return header
-
-    def _split_package_data(self, sub_array, segment_size, offset):
-        """ Splits package to the even sized segments"""
-        return [sub_array[i: i+segment_size] for i in range(0,len(sub_array), segment_size)]
-
-    def split_data(self):
-        """ Splits the data into packages """
-        package_data_size =  self.fragment_data_size * constants.SEGMENTS_AMOUNT
-        for offset in range(0, self.data_size, package_data_size):
-            package_data = self.data[offset: offset + package_data_size]
-            yield self._split_package_data(package_data, self.fragment_data_size, offset)
-
+ 
     def yield_segments(self):
-        pass
+        for offset in range(0, self.data_size, self.fragment_data_size):
+            yield self.data[offset:offset+self.fragment_data_size]
