@@ -1,9 +1,6 @@
 import constants as const
 from socket import gethostbyname, gethostname
 
-MIN_FRAGMENT_SIZE = 50
-MAX_FRAGMENT_SIZE = 1466
-
 # Getting input from the files
 
 def ask_again(function):
@@ -35,7 +32,7 @@ def ask_for_data(data_type):
 
 @ask_again
 def ask_for_fragment_size():
-    fragment_size = int(input(f"Input fragment size {MIN_FRAGMENT_SIZE} - {MAX_FRAGMENT_SIZE}: "))
+    fragment_size = int(input(f"Input fragment size {const.MIN_FRAGMENT_SIZE} - {const.MAX_FRAGMENT_SIZE}: "))
     if fragment_size < MIN_FRAGMENT_SIZE or fragment_size > MAX_FRAGMENT_SIZE:
         print("Wrong input")
         return None
