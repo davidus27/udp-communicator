@@ -6,7 +6,7 @@ import struct
 
 def calculate_checksum(*args):
     # Filter None and empty lists 
-    new_args = list(filter(lambda x : x, args))
+    new_args = list(filter(lambda x : x and type(x) is not list, args))
     string = b"".join(new_args)
     return sum(string) % 65535 # 2**16
 
@@ -21,17 +21,10 @@ class Packaging():
     def __init__(self, data: bytes, header_info: tuple):
         # header_info : fragment_size, data_type.upper(), (file_path)
         self.header_info = header_info
+        self.fragment_data_size = self.header_info[0]
+        self.data_size = len(data) if data else 0
         self.data = data
 
-    @property
-    def fragment_data_size(self):
-        """ How many bytes of data are in one fragment """
-        return self.header_info[0] - constants.DATA_HEADER_SIZE
-
-    @property
-    def data_size(self):
-        return len(self.data) if self.data else 0 
-    
     @property
     def fragments_amount(self):
         # return amount of all segment from the file
