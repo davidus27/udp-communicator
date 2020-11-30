@@ -59,6 +59,7 @@ class ServerSide(object):
 
     def send_NACK(self, process_segment) -> None:
         self.node.sendto(process_segment.create_reply(constants.NACK), self.address)
+        print("Wrong checksum. Sending NACK.")
 
     def send_ACK(self, process_segment) -> None:
         self.node.sendto(process_segment.create_reply(constants.ACK), self.address)
@@ -77,9 +78,8 @@ class ServerSide(object):
     def handle_communication(self):
         """ Listen on port for segment, if recieved create new thread so it can be processed """
         while not self.recieved_everything():
-            segment, _ = self.node.recvfrom(self.starting_header.fragment_size)
+            segment, _ = self.node.recvfrom(self.starting_header.fragment_size + constants.DATA_HEADER_SIZE)
             if segment == constants.END:
-                # should contain waiting for END ACK
                 #self.node.sendto(constants.ACK, self.address)
                 print("Recieved END segment. Ending session...")
                 return
@@ -94,11 +94,10 @@ class ServerSide(object):
             starting_header = StartingSegment(initial_segment)
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
-                #self.node.sendto(constants.ACK, self.address)
+                self.node.sendto(constants.ACK, self.address)
                 return
             else:
                 self.node.sendto(constants.NACK, self.address)
-                print("SOMETHING IS WRONG") # TODO : DELETE
     
     def start_listening(self) -> None:
         """ 

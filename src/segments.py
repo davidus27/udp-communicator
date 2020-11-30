@@ -17,7 +17,7 @@ class StartingSegment:
         header = struct.unpack(constants.STARTING_HEADER, starting_segment[:constants.STARTING_HEADER_SIZE])
         file_path = starting_segment[constants.STARTING_HEADER_SIZE:]
         if not file_path:
-            file_path = [None]
+            file_path = None
         # Fragments amount + Fragment size + Checksum + Data Type + file_path
         return list(header) + [file_path]
 

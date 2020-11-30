@@ -28,7 +28,7 @@ class ClientSide(object):
 
     def process_response(self, response, index) -> bool:
         processed_reply = ReplySegment(response)
-        if processed_reply.data_type == constants.ACK and processed_reply.has_valid_checksum():
+        if processed_reply.data_type == constants.ACK:
             self.window = list(filter(lambda x: x[0] != processed_reply.index, self.window))
             try: 
                 next_segment = next(self.data)
@@ -38,6 +38,7 @@ class ClientSide(object):
                 self.window.append((index, next_segment))
                 self.node.sendto(self.content.get_data_segment(index, next_segment), self.reciever)
         elif processed_reply.data_type == constants.NACK:
+            print("Caught NACK. Sending packet again.")
             self.node.sendto(self.content.get_data_segment(processed_reply.index, processed_reply.data_type), self.reciever)
         
         elif processed_reply.data_type == constants.KEEP_ALIVE:
@@ -47,8 +48,11 @@ class ClientSide(object):
 
     def send_data(self):
         index = 0
-        self._send_starting_message()
-        
+        while True:
+            self._send_starting_message()
+            response, _ = self.node.recvfrom(constants.STARTING_HEADER_SIZE)
+            if response == constants.ACK:
+                break
         # Fill empty window
         for _ in range(constants.SEGMENTS_AMOUNT):
             try:
@@ -57,6 +61,7 @@ class ClientSide(object):
             except StopIteration:
                 break
 
+        # TODO: Change this. It should be better... 
         # send all segments from the window
         for segment in self.window:
             self.node.sendto(self.content.get_data_segment(segment[0], segment[1]), self.reciever)
