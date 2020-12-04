@@ -2,13 +2,14 @@ from math import ceil
 import constants
 import ntpath
 import struct
+from libscrc import modbus
 
 
 def calculate_checksum(*args):
-    # Filter None and empty lists 
+    # Filter None and empty lists
     new_args = list(filter(lambda x : x and type(x) is not list, args))
     string = b"".join(new_args)
-    return sum(string) % 65535 # 2**16
+    return modbus(string) # 16-bit CRC 
 
 def get_file_name(path):
     if path:
