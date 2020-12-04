@@ -6,9 +6,9 @@ from socket import gethostbyname, gethostname
 def ask_again(function):
     def decorate(*args):
         result = None
-        while not result:
+        while result is None:
             result = function(*args)
-            if not result:
+            if result is None:
                 print("Wrong input. Try again.")
         return result
     return decorate     
@@ -23,9 +23,10 @@ def ask_for_file():
 
 @ask_again
 def ask_for_data(data_type):
-    if data_type.upper() == "F":
+    data_type = data_type.upper()
+    if data_type == "F":
         return ask_for_file() # data, file_path
-    elif data_type.upper() == "M":
+    elif data_type == "M":
         message = input("Input the message: ").encode(const.CODING_FORMAT)
         return message, None
     return None
@@ -65,3 +66,26 @@ def ask_for_recipient():
     except:
         return None
     return ip, port
+
+@ask_again
+def ask_for_test():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to start a test?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
+        return None
+
+
+@ask_again
+def ask_for_implementation():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to test implementation?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
+        return None
