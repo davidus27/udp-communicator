@@ -54,18 +54,22 @@ def ask_for_header_info():
     else:
         return data, fragment_size, data_type
 
+@ask_again
+def ask_for_port():
+    port = input("Input port number[5555]: ")
+    if port is not "":
+        try:
+            return int(port)
+        except:
+            return None
+    return 5555
 
 @ask_again
 def ask_for_recipient():
-    ip = input("Input ip address: ")
-    if ip == "localhost":
+    ip = input("Input ip address[localhost]: ")
+    if ip == "localhost" or ip == "":
         ip = gethostbyname(gethostname()) #local ip
-    
-    try:
-        port = int(input("Input port number: "))
-    except:
-        return None
-    return ip, port
+    return ip, ask_for_port()
 
 @ask_again
 def ask_for_test():
