@@ -14,7 +14,7 @@ class SettingStrategy():
         specific strategy
         """ 
         if self._strategy is ServerSide:
-            self.arguments.append(int(input("Input port: ")))
+            self.arguments.append(questions.ask_for_port())
             #self.arguments.append(questions.ask_for_implementation())
 
         elif self._strategy is ClientSide:
