@@ -2,8 +2,6 @@ import socket
 from concurrent.futures import ThreadPoolExecutor
 import constants
 import packing
-import sys
-
 from segments import *
 
 """

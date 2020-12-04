@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from packing import calculate_checksum
 import socket
 import time
-import os
 import math
 import sys
 import constants
