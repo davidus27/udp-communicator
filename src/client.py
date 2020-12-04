@@ -13,15 +13,17 @@ Package = Group of segments that are sent together
 """
 
 class ClientSide(object):
-    def __init__(self, reciever: tuple, content: packing.Packaging, send_false_packets=False):
+    def __init__(self, reciever: tuple, port: int, content: packing.Packaging, send_false_packets=False):
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         self.reciever = reciever
+        self.port = port
         self.content = content
         self.data = content.yield_segments()
         self.window = []
         self.send_false_packets = send_false_packets
 
     def _send_starting_message(self):
+        self.node.bind(('', self.port))
         self.node.sendto(self.content.get_starting_segment(), self.reciever)
         if self.content.header_info[1] == b'F':
             print("Sending file", self.content.header_info[2].decode(constants.CODING_FORMAT))

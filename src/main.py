@@ -19,8 +19,11 @@ class SettingStrategy():
 
         elif self._strategy is ClientSide:
             self.arguments.append(questions.ask_for_recipient())
+            self.arguments.append(questions.ask_for_listening_port())
+            
             header = questions.ask_for_header_info()
             self.arguments.append(Packaging(header[0], header[1:]))
+            
             # extra arguments:
             self.arguments.append(questions.ask_for_test())
             # based on what will be in implementation

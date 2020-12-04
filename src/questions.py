@@ -66,13 +66,23 @@ def ask_for_header_info():
 
 @ask_again
 def ask_for_port():
-    port = input("Input port number[5555]: ")
+    port = input("Input server port[5555]: ")
     if port is not "":
         try:
             return int(port)
         except:
             return None
     return 5555
+
+@ask_again
+def ask_for_listening_port():
+    port = input("Input your port[7777]: ")
+    if port is not "":
+        try:
+            return int(port)
+        except:
+            return None
+    return 7777
 
 @ask_again
 def ask_for_recipient():
