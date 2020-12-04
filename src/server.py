@@ -4,8 +4,16 @@ import socket
 import time
 import math
 import sys
+import ntpath
 import constants
 from segments import *
+
+def get_file_name(path):
+    if path:
+        head, tail = ntpath.split(path)
+        return tail or ntpath.basename(head)
+    return None
+
 
 class ServerSide(object):
     def __init__(self, port):
@@ -30,7 +38,9 @@ class ServerSide(object):
         if self.starting_header.data_type == b"M":
             print(b"".join(self.data).decode(constants.CODING_FORMAT)) # TODO: CHECK IF CORRECT 
         else:
-            with open(self.starting_header.file_path, "wb+") as f:
+            # slice absolute file path and save only name
+            file_path = get_file_name(self.starting_header.file_path)
+            with open(file_path, "wb+") as f:
                 for d in self.data:
                     f.write(d)
 
@@ -94,6 +104,11 @@ class ServerSide(object):
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
                 self.node.sendto(constants.ACK, self.address)
+                
+                file_path = starting_header.file_path
+                if file_path:
+                    print(f"File {file_path.decode(constants.CODING_FORMAT)} will be saved locally.")
+                
                 return
             else:
                 self.node.sendto(constants.NACK, self.address)

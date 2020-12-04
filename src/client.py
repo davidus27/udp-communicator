@@ -23,6 +23,8 @@ class ClientSide(object):
 
     def _send_starting_message(self):
         self.node.sendto(self.content.get_starting_segment(), self.reciever)
+        if self.content.header_info[1] == b'F':
+            print("Sending file", self.content.header_info[2].decode(constants.CODING_FORMAT))
 
     def process_response(self, response, index) -> bool:
         processed_reply = ReplySegment(response)

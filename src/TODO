@@ -8,6 +8,6 @@
 - [ ] Doplnit do dokumentu informacie o zmenach a zvysku programu
 - [ ] Pridat moznost urcenia cieloveho aj prichadzajuceho portu
 - [ ] Pridat vypis ziskaneho fragmentu
-- [ ] Pridat vypis absolutnej cesty suboru na oboch stranach
+- [x] Pridat vypis absolutnej cesty suboru na oboch stranach
 - [x] Pripravit program na doimplementaciu
 - [x] Zrusit minimalnu limitaciu velkosti fragmentu

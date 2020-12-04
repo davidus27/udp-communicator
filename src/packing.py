@@ -1,6 +1,5 @@
 from math import ceil
 import constants
-import ntpath
 import struct
 from libscrc import modbus
 
@@ -10,12 +9,6 @@ def calculate_checksum(*args):
     new_args = list(filter(lambda x : x and type(x) is not list, args))
     string = b"".join(new_args)
     return modbus(string) # 16-bit CRC 
-
-def get_file_name(path):
-    if path:
-        head, tail = ntpath.split(path)
-        return tail or ntpath.basename(head)
-    return None
 
 
 class Packaging():
@@ -55,10 +48,9 @@ class Packaging():
                         self.header_info[1]
                         )
         if self.header_info[1] == b'F': # if data type is a file
-            file_path = get_file_name(self.header_info[2]) # add sliced file_path
-            checksum = calculate_checksum(check, file_path)
+            checksum = calculate_checksum(check, self.header_info[2])
             header = self.get_starting_header(checksum)
-            header += file_path            
+            header += self.header_info[2]            
         else:
             # message is sent, so only checksum was added
             checksum = calculate_checksum(check)
