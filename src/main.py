@@ -8,20 +8,23 @@ class SettingStrategy():
         self._strategy = None
         self.arguments = []
 
-    def add_data_info(self):
-        args = None
-        while not args:
-            args = self._ask_for_header_info()
-        self.arguments.append(Packaging(args[0], args[1:]))
-
     def get_strategy(self):
+        """
+        Adds outputs from questions to the list of arguments for
+        specific strategy
+        """ 
         if self._strategy is ServerSide:
             self.arguments.append(int(input("Input port: ")))
+            #self.arguments.append(questions.ask_for_implementation())
+
         elif self._strategy is ClientSide:
             self.arguments.append(questions.ask_for_recipient())
-
             header = questions.ask_for_header_info()
             self.arguments.append(Packaging(header[0], header[1:]))
+            # extra arguments:
+            self.arguments.append(questions.ask_for_test())
+            # based on what will be in implementation
+            #self.arguments.append(questions.ask_for_implementation())
         else:
             print("Error.")
         return self._strategy(*self.arguments)
@@ -35,14 +38,14 @@ class SettingStrategy():
         Execute sides needed parts
         """
         while True:
-            side = input("Do you want to run as server or a client? [S/c]: ")
-            if side.upper() == "C":
+            side = input("Do you want to run as server or a client? [S/c]: ").upper()
+            if side == "C":
                 self._strategy = ClientSide
                 self.get_strategy().send_data()
-            elif side.upper() == "S" or side == "":
+            elif side == "S" or side == "":
                 self._strategy = ServerSide
                 self.get_strategy().start_listening()
-            elif side.upper() == "Q":
+            elif side == "Q":
                 break
             if input("Press q for ending session, or any key to continue.") == "q":
                 break
@@ -50,5 +53,4 @@ class SettingStrategy():
 
 
 if __name__ == "__main__":
-    context = SettingStrategy()
-    context.execute_side()
+    SettingStrategy().execute_side()
