@@ -1,6 +1,9 @@
 import constants as const
 from socket import gethostbyname, gethostname
 
+import pathlib
+import os
+
 # Getting input from the files
 
 def ask_again(function):
@@ -17,9 +20,13 @@ def ask_again(function):
 def ask_for_file():
     data = None
     file_path = input("Input file path: ").encode(const.CODING_FORMAT)
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return data, file_path
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+    except:
+        print("File path not found.")
+        return None
+    return data, os.path.abspath(file_path) # get absolute path
 
 @ask_again
 def ask_for_data(data_type):
