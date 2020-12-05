@@ -52,7 +52,8 @@ class ClientSide(object):
      
         elif processed_reply.has_valid_checksum() and processed_reply.data_type == const.NACK:
             print("Caught NACK. Sending packet again.")
-            self.node.sendto(self.content.get_data_segment(processed_reply.index, processed_reply.data_type), self.reciever)
+            corrected_data = list(filter(lambda x: x[0] == processed_reply.index, self.window))[0][1]
+            self.node.sendto(self.content.get_data_segment(processed_reply.index, corrected_data), self.reciever)
         else:
             print("Error, unknown packet found.")
         
@@ -83,8 +84,9 @@ class ClientSide(object):
             with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor:
                 index += 1
                 thread = executor.submit(self.process_response, response, index)
-                if thread.result():
-                    break
+                thread.result()
+                #if thread.result():
+                #    break
 
         self.node.sendto(const.END, self.reciever)
 
