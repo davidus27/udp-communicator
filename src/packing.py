@@ -1,5 +1,5 @@
 from math import ceil
-import constants
+import constants as const
 import struct
 from libscrc import modbus
 
@@ -26,13 +26,19 @@ class Packaging():
             return ceil(self.data_size/(self.fragment_data_size))
         return 0
     
+    def get_wrong_data_segment(self, index, fragment_data):
+        # generate incorrect data segment for testing the NACK responses
+        header = struct.pack(const.FRAGMENT_INDEX, index)
+        header += struct.pack(const.CHECKSUM, 0)
+        return header + fragment_data
+
     def get_data_segment(self, index, fragment_data):
-        header = struct.pack(constants.FRAGMENT_INDEX, index)
-        header += struct.pack(constants.CHECKSUM, calculate_checksum(header, fragment_data))
+        header = struct.pack(const.FRAGMENT_INDEX, index)
+        header += struct.pack(const.CHECKSUM, calculate_checksum(header, fragment_data))
         return header + fragment_data
 
     def get_starting_header(self, checksum):
-        return struct.pack(constants.STARTING_HEADER,
+        return struct.pack(const.STARTING_HEADER,
                 self.fragments_amount,
                 self.header_info[0],
                 checksum,
@@ -42,7 +48,7 @@ class Packaging():
     def get_starting_segment(self):
         # Fragments amount + Fragment size + Checksum + Data Type
         # for easier calculation of checksum
-        check = struct.pack(constants.STARTING_HEADER_WO_CHECKSUM,
+        check = struct.pack(const.STARTING_HEADER_WO_CHECKSUM,
                         self.fragments_amount,
                         self.header_info[0],
                         self.header_info[1]

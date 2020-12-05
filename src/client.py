@@ -1,9 +1,11 @@
 import socket
 from concurrent.futures import ThreadPoolExecutor
-import constants
+import constants as const
 import packing
+from random import seed, random
 from segments import *
 
+seed()
 """
 TODO : Set more consistent terminology 
 
@@ -26,11 +28,19 @@ class ClientSide(object):
         self.node.bind(('', self.port))
         self.node.sendto(self.content.get_starting_segment(), self.reciever)
         if self.content.header_info[1] == b'F':
-            print("Sending file", self.content.header_info[2].decode(constants.CODING_FORMAT))
+            print("Sending file", self.content.header_info[2].decode(const.CODING_FORMAT))
+
+    def _send_segment(self, index, segment):
+        # randomly generate wrong response if setup
+        if self.send_false_packets and random() < const.WRONG_PACKET_RATIO:
+            self.node.sendto(self.content.get_wrong_data_segment(index, segment), self.reciever)    
+        else:
+            # send good response
+            self.node.sendto(self.content.get_data_segment(index, segment), self.reciever)
 
     def process_response(self, response, index) -> bool:
         processed_reply = ReplySegment(response)
-        if processed_reply.data_type == constants.ACK:
+        if processed_reply.has_valid_checksum() and processed_reply.data_type == const.ACK :
             self.window = list(filter(lambda x: x[0] != processed_reply.index, self.window))
             try: 
                 next_segment = next(self.data)
@@ -38,13 +48,13 @@ class ClientSide(object):
                 return True
             else:
                 self.window.append((index, next_segment))
-                self.node.sendto(self.content.get_data_segment(index, next_segment), self.reciever)
-        elif processed_reply.data_type == constants.NACK:
+                self._send_segment(index, next_segment)
+     
+        elif processed_reply.has_valid_checksum() and processed_reply.data_type == const.NACK:
             print("Caught NACK. Sending packet again.")
             self.node.sendto(self.content.get_data_segment(processed_reply.index, processed_reply.data_type), self.reciever)
-        
-        elif processed_reply.data_type == constants.KEEP_ALIVE:
-            self.node.sendto(constants.KEEP_ALIVE, self.reciever)
+        else:
+            print("Error, unknown packet found.")
         
         return False
 
@@ -52,11 +62,11 @@ class ClientSide(object):
         index = 0
         while True:
             self._send_starting_message()
-            response, _ = self.node.recvfrom(constants.STARTING_HEADER_SIZE)
-            if response == constants.ACK:
+            response, _ = self.node.recvfrom(const.STARTING_HEADER_SIZE)
+            if response == const.ACK:
                 break
         # Fill empty window
-        for _ in range(constants.SEGMENTS_AMOUNT):
+        for _ in range(const.SEGMENTS_AMOUNT):
             try:
                 self.window.append((index, next(self.data)))
                 index += 1
@@ -69,12 +79,12 @@ class ClientSide(object):
             self.node.sendto(self.content.get_data_segment(segment[0], segment[1]), self.reciever)
         
         while self.window:
-            response, _ = self.node.recvfrom(constants.REPLY_HEADER_SIZE)
-            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor:
+            response, _ = self.node.recvfrom(const.REPLY_HEADER_SIZE)
+            with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor:
                 index += 1
                 thread = executor.submit(self.process_response, response, index)
                 if thread.result():
                     break
 
-        self.node.sendto(constants.END, self.reciever)
+        self.node.sendto(const.END, self.reciever)
 

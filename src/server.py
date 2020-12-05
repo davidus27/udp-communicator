@@ -5,7 +5,7 @@ import time
 import math
 import sys
 import ntpath
-import constants
+import constants as const
 from segments import *
 
 def get_file_name(path):
@@ -29,14 +29,14 @@ class ServerSide(object):
 
     def get_raw_data(self) -> str:
         for item in self.data:
-            yield item[1].decode(constants.CODING_FORMAT)
+            yield item[1].decode(const.CODING_FORMAT)
 
     def process_data(self) -> None:
         """ Function to either print message, or save the recieved file """
         self.data.sort(key=lambda x : x[0])
         self.data = list(map(lambda x : x[1], self.data))
         if self.starting_header.data_type == b"M":
-            print(b"".join(self.data).decode(constants.CODING_FORMAT)) # TODO: CHECK IF CORRECT 
+            print(b"".join(self.data).decode(const.CODING_FORMAT)) # TODO: CHECK IF CORRECT 
         else:
             # slice absolute file path and save only name
             file_path = get_file_name(self.starting_header.file_path)
@@ -67,11 +67,11 @@ class ServerSide(object):
             sys.stdout.flush()
 
     def send_NACK(self, process_segment) -> None:
-        self.node.sendto(process_segment.create_reply(constants.NACK), self.address)
+        self.node.sendto(process_segment.create_reply(const.NACK), self.address)
         print("Wrong checksum. Sending NACK.")
 
     def send_ACK(self, process_segment) -> None:
-        self.node.sendto(process_segment.create_reply(constants.ACK), self.address)
+        self.node.sendto(process_segment.create_reply(const.ACK), self.address)
 
     def process_segment(self, segment : DataSegment) -> None:
         """ Check if segment is correct, save it or drop it and reply to the client """
@@ -87,31 +87,31 @@ class ServerSide(object):
     def handle_communication(self):
         """ Listen on port for segment, if recieved create new thread so it can be processed """
         while not self.recieved_everything():
-            segment, _ = self.node.recvfrom(self.starting_header.fragment_size + constants.DATA_HEADER_SIZE)
-            if segment == constants.END:
-                #self.node.sendto(constants.ACK, self.address)
+            segment, _ = self.node.recvfrom(self.starting_header.fragment_size + const.DATA_HEADER_SIZE)
+            if segment == const.END:
+                self.node.sendto(const.ACK, self.address)
                 print("Recieved END segment. Ending session...")
                 return
-            with ThreadPoolExecutor(max_workers=constants.MAXIMUM_THREADS) as executor: 
+            with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor: 
                 thread = executor.submit(self.process_segment, segment)
                 thread.result()
 
     def create_connection(self) -> None:
         """ Wait for start of connection """
         while True:
-            initial_segment, self.address = self.node.recvfrom(constants.MAX_STARTING_HEADER_SIZE)
+            initial_segment, self.address = self.node.recvfrom(const.MAX_STARTING_HEADER_SIZE)
             starting_header = StartingSegment(initial_segment)
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
-                self.node.sendto(constants.ACK, self.address)
+                self.node.sendto(const.ACK, self.address)
                 
                 file_path = starting_header.file_path
                 if file_path:
-                    print(f"File {file_path.decode(constants.CODING_FORMAT)} will be saved locally.")
+                    print(f"File {file_path.decode(const.CODING_FORMAT)} will be saved locally.")
                 
                 return
             else:
-                self.node.sendto(constants.NACK, self.address)
+                self.node.sendto(const.NACK, self.address)
     
     def start_listening(self) -> None:
         """ 
