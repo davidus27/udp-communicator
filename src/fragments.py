@@ -2,7 +2,7 @@ from packing import calculate_checksum # TODO : remove this stupidity
 import constants as const
 import struct
 
-class StartingSegment:
+class StartingFragment:
     def __init__(self, starting_header):
         self._starting_header= starting_header
         self._header = self._process_starting_header(starting_header)
@@ -12,10 +12,10 @@ class StartingSegment:
         self.data_type = self._header[3]
         self.file_path = self._header[4]
 
-    def _process_starting_header(self, starting_segment) -> tuple:
+    def _process_starting_header(self, starting_fragment) -> tuple:
         #TODO: check alternative constant
-        header = struct.unpack(const.STARTING_HEADER, starting_segment[:const.STARTING_HEADER_SIZE])
-        file_path = starting_segment[const.STARTING_HEADER_SIZE:]
+        header = struct.unpack(const.STARTING_HEADER, starting_fragment[:const.STARTING_HEADER_SIZE])
+        file_path = starting_fragment[const.STARTING_HEADER_SIZE:]
         if not file_path:
             file_path = None
         # Fragments amount + Fragment size + Checksum + Data Type + file_path
@@ -35,18 +35,18 @@ class StartingSegment:
         return self._starting_header
 
 
-class DataSegment:
-    def __init__(self, data_segment):
-        self._data_segment = data_segment
-        self._header = self._process_data_segment(data_segment)
+class DataFragment:
+    def __init__(self, data_fragment):
+        self._data_fragment = data_fragment
+        self._header = self._process_data_fragment(data_fragment)
         self.index = self._header[0]
         self.checksum = self._header[1]
         self.data = self._header[2]
 
-    def _process_data_segment(self, segment) -> tuple:
-        """ Separate information in the received segment"""
-        header = struct.unpack(const.DATA_HEADER, segment[0:const.DATA_HEADER_SIZE])
-        data = segment[const.DATA_HEADER_SIZE:] 
+    def _process_data_fragment(self, fragment) -> tuple:
+        """ Separate information in the received fragment"""
+        header = struct.unpack(const.DATA_HEADER, fragment[0:const.DATA_HEADER_SIZE])
+        data = fragment[const.DATA_HEADER_SIZE:] 
         return list(header) + [data] # Index, Checksum, Data
 
     def has_valid_checksum(self) -> bool:
@@ -61,10 +61,10 @@ class DataSegment:
         return reply
 
     def __call__(self):
-        return self._data_segment
+        return self._data_fragment
 
 
-class ReplySegment:
+class ReplyFragment:
     def __init__(self, reply):
         self._reply = reply
         self._header = self._process_reply(reply)
@@ -73,7 +73,7 @@ class ReplySegment:
         self.data_type = self._header[2]
 
     def _process_reply(self, reply) -> tuple:
-        """ Separate information in the received segment"""
+        """ Separate information in the received fragment"""
         # Index, Checksum, Data type
         return struct.unpack(const.REPLY_HEADER, reply)
 

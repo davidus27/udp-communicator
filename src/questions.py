@@ -20,21 +20,23 @@ def ask_again(function):
 def ask_for_file():
     data = None
     file_path = input("Input file path: ").encode(const.CODING_FORMAT)
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-    except:
+    p = pathlib.Path(file_path.decode(const.CODING_FORMAT))
+    if p.is_file():
+        return None, os.path.abspath(file_path) # get absolute path
+    else:
         print("File path not found.")
         return None
-    return data, os.path.abspath(file_path) # get absolute path
 
 @ask_again
 def ask_for_data(data_type):
     data_type = data_type.upper()
     if data_type == "F":
-        return ask_for_file() # data, file_path
+        return ask_for_file() # None, file path
     elif data_type == "M":
         message = input("Input the message: ").encode(const.CODING_FORMAT)
+        if message == "":
+            print("Write something.")
+            return None
         return message, None
     return None
 
@@ -51,23 +53,18 @@ def ask_for_fragment_size():
 
 @ask_again
 def ask_for_header_info():
-    data_type = input("Do you want to send file or message? [M/f]: ")
+    data_type = input("Do you want to send file or message? [M/f]: ").upper()
     if data_type == "":
         data_type = "M"
     data, file_path = ask_for_data(data_type)
     fragment_size = ask_for_fragment_size()
-
-    data_type = data_type.upper().encode(const.CODING_FORMAT)
-
-    if file_path:
-        return data, fragment_size, data_type, file_path 
-    else:
-        return data, fragment_size, data_type
+    data_type = data_type.encode(const.CODING_FORMAT)
+    return data, fragment_size, data_type, file_path
 
 @ask_again
 def ask_for_port():
     port = input("Input server port[5555]: ")
-    if port is not "":
+    if port != "":
         try:
             return int(port)
         except:
@@ -77,7 +74,7 @@ def ask_for_port():
 @ask_again
 def ask_for_listening_port():
     port = input("Input your port[7777]: ")
-    if port is not "":
+    if port != "":
         try:
             return int(port)
         except:

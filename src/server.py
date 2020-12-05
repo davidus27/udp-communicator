@@ -6,7 +6,7 @@ import math
 import sys
 import ntpath
 import constants as const
-from segments import *
+from fragments import *
 
 def get_file_name(path):
     if path:
@@ -20,17 +20,9 @@ class ServerSide(object):
         self.port = port
         self.data = []
         self.address = None
-        self.starting_header = None # starting header: segment amount, segment size, checksum, data type
+        self.starting_header = None # starting header: fragment amount, fragment size, checksum, data type
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    def save_package(self, package) -> None:
-        for fragment in package:
-            self.data.append(fragment)
-
-    def get_raw_data(self) -> str:
-        for item in self.data:
-            yield item[1].decode(const.CODING_FORMAT)
-
     def process_data(self) -> None:
         """ Function to either print message, or save the recieved file """
         self.data.sort(key=lambda x : x[0])
@@ -66,41 +58,41 @@ class ServerSide(object):
             sys.stdout.write("Downloading file : %d%%   \r" % (progress) )
             sys.stdout.flush()
 
-    def send_NACK(self, process_segment) -> None:
-        self.node.sendto(process_segment.create_reply(const.NACK), self.address)
+    def send_NACK(self, process_fragment) -> None:
+        self.node.sendto(process_fragment.create_reply(const.NACK), self.address)
         print("Wrong checksum. Sending NACK.")
 
-    def send_ACK(self, process_segment) -> None:
-        self.node.sendto(process_segment.create_reply(const.ACK), self.address)
+    def send_ACK(self, process_fragment) -> None:
+        self.node.sendto(process_fragment.create_reply(const.ACK), self.address)
 
-    def process_segment(self, segment : DataSegment) -> None:
-        """ Check if segment is correct, save it or drop it and reply to the client """
-        processed_segment = DataSegment(segment)
-        if processed_segment.has_valid_checksum():
-            # save segment
-            self.data.append((processed_segment.index, processed_segment.data)) 
-            self.send_ACK(processed_segment)
+    def process_fragment(self, fragment : DataFragment) -> None:
+        """ Check if fragment is correct, save it or drop it and reply to the client """
+        processed_fragment = DataFragment(fragment)
+        if processed_fragment.has_valid_checksum():
+            # save fragment
+            self.data.append((processed_fragment.index, processed_fragment.data)) 
+            self.send_ACK(processed_fragment)
         else:
-            self.send_NACK(processed_segment)
+            self.send_NACK(processed_fragment)
         self.print_progress()
 
     def handle_communication(self):
-        """ Listen on port for segment, if recieved create new thread so it can be processed """
+        """ Listen on port for fragment, if recieved create new thread so it can be processed """
         while not self.recieved_everything():
-            segment, _ = self.node.recvfrom(self.starting_header.fragment_size + const.DATA_HEADER_SIZE)
-            if segment == const.END:
+            fragment, _ = self.node.recvfrom(self.starting_header.fragment_size + const.DATA_HEADER_SIZE)
+            if fragment == const.END:
                 self.node.sendto(const.ACK, self.address)
-                print("Recieved END segment. Ending session...")
+                print("Recieved END fragment. Ending session...")
                 return
             with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor: 
-                thread = executor.submit(self.process_segment, segment)
+                thread = executor.submit(self.process_fragment, fragment)
                 thread.result()
 
     def create_connection(self) -> None:
         """ Wait for start of connection """
         while True:
-            initial_segment, self.address = self.node.recvfrom(const.MAX_STARTING_HEADER_SIZE)
-            starting_header = StartingSegment(initial_segment)
+            initial_fragment, self.address = self.node.recvfrom(const.MAX_STARTING_HEADER_SIZE)
+            starting_header = StartingFragment(initial_fragment)
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
                 self.node.sendto(const.ACK, self.address)
