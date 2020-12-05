@@ -26,6 +26,7 @@ class ClientSide(object):
 
     def _send_starting_message(self):
         self.node.bind(('', self.port))
+        self.node.settimeout(const.TIMEOUT)
         self.node.sendto(self.content.get_starting_fragment(), self.reciever)
         if self.content.header_info[1] == b'F':
             print("Sending file", self.content.header_info[2].decode(const.CODING_FORMAT))
@@ -40,7 +41,7 @@ class ClientSide(object):
 
     def process_response(self, response, index) -> bool:
         processed_reply = ReplyFragment(response)
-        if processed_reply.has_valid_checksum() and processed_reply.data_type == const.ACK :
+        if processed_reply.has_valid_checksum() and processed_reply.data_type == const.ACK:
             self.window = list(filter(lambda x: x[0] != processed_reply.index, self.window))
             try: 
                 next_fragment = next(self.data)
@@ -56,10 +57,9 @@ class ClientSide(object):
             self.node.sendto(self.content.get_data_fragment(processed_reply.index, corrected_data), self.reciever)
         else:
             print("Error, unknown packet found.")
-        
         return False
 
-    def start_communication(self):
+    def create_connection(self):
         while True:
             self._send_starting_message()
             response, _ = self.node.recvfrom(const.STARTING_HEADER_SIZE)
@@ -69,6 +69,11 @@ class ClientSide(object):
     def keep_alive(self):
         pass
 
+    def send_whole_window(self):
+        # send all fragments from the window
+        for fragment in self.window:
+            self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.reciever)
+        
     def send_data(self):
         # Fill empty window
         index = 0
@@ -79,20 +84,20 @@ class ClientSide(object):
             except StopIteration:
                 break
 
-        # send all fragments from the window
-        for fragment in self.window:
-            self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.reciever)
-        
-        while self.window:
-            response, _ = self.node.recvfrom(const.REPLY_HEADER_SIZE)
-            with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor:
-                index += 1
-                thread = executor.submit(self.process_response, response, index)
-                thread.result()
+        self.send_whole_window()
 
+        while self.window:
+            try:
+                response, _ = self.node.recvfrom(const.REPLY_HEADER_SIZE)
+                with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor:
+                    index += 1
+                    thread = executor.submit(self.process_response, response, index)
+                    thread.result()
+            except socket.timeout:
+                self.send_whole_window()
         self.node.sendto(const.END, self.reciever)
 
     def handle_communication(self):
-        self.start_communication()
+        self.create_connection()
         self.send_data()
         self.keep_alive()

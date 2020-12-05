@@ -97,15 +97,17 @@ class ServerSide(object):
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
                 self.node.sendto(const.ACK, self.address)
-                
-                file_path = starting_header.file_path
-                if file_path:
-                    print(f"File {file_path.decode(const.CODING_FORMAT)} will be saved locally.")
-                
                 return
             else:
                 self.node.sendto(const.NACK, self.address)
     
+    def print_info(self):
+        file_path = self.starting_header.file_path
+        if file_path:
+            print(f"File {file_path.decode(const.CODING_FORMAT)} will be saved locally.")
+        print("Size of framgents:", self.starting_header.fragment_size)
+        print("Amount of fragments:", self.starting_header.fragments_amount)
+
     def keep_alive(self):
         pass
 
@@ -117,5 +119,6 @@ class ServerSide(object):
         if self.set_socket():
             print(f"[LISTENING] port: {self.port}")
             self.create_connection()
+            self.print_info()
             self.listen()
             self.process_data()
