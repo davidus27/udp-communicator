@@ -23,8 +23,6 @@ class SettingStrategy():
             
             header = questions.ask_for_header_info()
             self.arguments.append(Packaging(header[0], header[1:]))
-            
-            # extra arguments:
             self.arguments.append(questions.ask_for_test())
             # based on what will be in implementation
             #self.arguments.append(questions.ask_for_implementation())
@@ -36,19 +34,24 @@ class SettingStrategy():
         self.arguments = []
         self._strategy = None
         
+    def ask_for_strategy(self):
+        side = input("Do you want to run as server or a client? [S/c]: ").upper()
+        if side == "C":
+            self._strategy = ClientSide
+        elif side == "S" or side == "":
+            self._strategy = ServerSide
+        elif side == "Q":
+            return False
+        return True
+    
     def execute_side(self):
         """
         Execute sides needed parts
         """
         while True:
-            side = input("Do you want to run as server or a client? [S/c]: ").upper()
-            if side == "C":
-                self._strategy = ClientSide
-                self.get_strategy().send_data()
-            elif side == "S" or side == "":
-                self._strategy = ServerSide
-                self.get_strategy().start_listening()
-            elif side == "Q":
+            if self.ask_for_strategy():
+                self.get_strategy().handle_communication()
+            else:
                 break
             if input("Press q for ending session, or any key to continue.") == "q":
                 break

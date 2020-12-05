@@ -35,7 +35,7 @@ class ClientSide(object):
         if self.send_false_packets and random() < const.WRONG_PACKET_RATIO:
             self.node.sendto(self.content.get_wrong_data_fragment(index, fragment), self.reciever)    
         else:
-            # send good response
+            # send correct response
             self.node.sendto(self.content.get_data_fragment(index, fragment), self.reciever)
 
     def process_response(self, response, index) -> bool:
@@ -59,14 +59,19 @@ class ClientSide(object):
         
         return False
 
-    def send_data(self):
-        index = 0
+    def start_communication(self):
         while True:
             self._send_starting_message()
             response, _ = self.node.recvfrom(const.STARTING_HEADER_SIZE)
             if response == const.ACK:
                 break
+
+    def keep_alive(self):
+        pass
+
+    def send_data(self):
         # Fill empty window
+        index = 0
         for _ in range(const.FRAGMENTS_AMOUNT):
             try:
                 self.window.append((index, next(self.data)))
@@ -74,7 +79,6 @@ class ClientSide(object):
             except StopIteration:
                 break
 
-        # TODO: Change this. It should be better... 
         # send all fragments from the window
         for fragment in self.window:
             self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.reciever)
@@ -88,3 +92,7 @@ class ClientSide(object):
 
         self.node.sendto(const.END, self.reciever)
 
+    def handle_communication(self):
+        self.start_communication()
+        self.send_data()
+        self.keep_alive()

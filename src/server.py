@@ -20,7 +20,8 @@ class ServerSide(object):
         self.port = port
         self.data = []
         self.address = None
-        self.starting_header = None # starting header: fragment amount, fragment size, checksum, data type
+        # starting header: fragment amount, fragment size, checksum, data type
+        self.starting_header = None 
         self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     def process_data(self) -> None:
@@ -76,7 +77,7 @@ class ServerSide(object):
             self.send_NACK(processed_fragment)
         self.print_progress()
 
-    def handle_communication(self):
+    def listen(self):
         """ Listen on port for fragment, if recieved create new thread so it can be processed """
         while not self.recieved_everything():
             fragment, _ = self.node.recvfrom(self.starting_header.fragment_size + const.DATA_HEADER_SIZE)
@@ -105,7 +106,10 @@ class ServerSide(object):
             else:
                 self.node.sendto(const.NACK, self.address)
     
-    def start_listening(self) -> None:
+    def keep_alive(self):
+        pass
+
+    def handle_communication(self) -> None:
         """ 
         Main function of class. 
         Listens on the port, creates connection and handles it.
@@ -113,5 +117,5 @@ class ServerSide(object):
         if self.set_socket():
             print(f"[LISTENING] port: {self.port}")
             self.create_connection()
-            self.handle_communication()
+            self.listen()
             self.process_data()
