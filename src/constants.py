@@ -5,8 +5,12 @@ CODING_FORMAT = "utf-8"
 # REWRITE
 ACK = b"A"
 NACK = b"N"
-KEEP_ALIVE = b"K"
 END = b"E"
+KEEP_ALIVE = b"KA"
+END_BY_USER = b"EU"
+END_BY_TIMEOUT = b"ET"
+START_COMMUNICATION = b"S"
+ENDING_MESSAGE_LEN = len(KEEP_ALIVE)
 
 REPLY_HEADER = "IHc" # Fragment index + Checksum + Reply Type
 
@@ -32,3 +36,4 @@ MAXIMUM_THREADS = 5
 # TODO : delete
 FRAGMENTS_AMOUNT = 10
 TIMEOUT = 1.5 # 1.5 seconds
+KEEP_ALIVE_TIMEOUT = 10
