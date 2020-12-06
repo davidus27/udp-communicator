@@ -1,7 +1,7 @@
 from server import ServerSide
 from client import ClientSide
 from packing import Packaging
-import questions
+from questions import *
 
 class SettingStrategy():
     def __init__(self):
@@ -14,22 +14,21 @@ class SettingStrategy():
         specific strategy
         """ 
         if self._strategy is ServerSide:
-            self.arguments.append(questions.ask_for_port())
-            #self.arguments.append(questions.ask_for_implementation())
+            self.arguments = [ask_for_port()]
+            #self.arguments.append(ask_for_implementation())
 
         elif self._strategy is ClientSide:
-            self.arguments.append(questions.ask_for_recipient())
-            self.arguments.append(questions.ask_for_listening_port())
-            
-            header = questions.ask_for_header_info()
-            self.arguments.append(Packaging(header[0], header[1:]))
-            self.arguments.append(questions.ask_for_test())
+            self.arguments = [ask_for_recipient(), 
+                            ask_for_listening_port(),
+                            self._get_header(),
+                            ask_for_test()]
             # based on what will be in implementation
-            #self.arguments.append(questions.ask_for_implementation())
-        else:
-            print("Error.")
+            #self.arguments.append(ask_for_implementation())
         return self._strategy(*self.arguments)
 
+    def _get_header(self):
+        header = ask_for_header_info()
+        return Packaging(header[0], header[1:])
     def clear_options(self):
         self.arguments = []
         self._strategy = None
