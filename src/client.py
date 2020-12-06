@@ -65,7 +65,7 @@ class ClientSide(object):
             response, _ = self.node.recvfrom(const.STARTING_HEADER_SIZE)
             if response == const.ACK:
                 break
-
+    
     def keep_alive(self):
         pass
 
@@ -98,6 +98,9 @@ class ClientSide(object):
         self.node.sendto(const.END, self.reciever)
 
     def handle_communication(self):
-        self.create_connection()
-        self.send_data()
-        self.keep_alive()
+        while True:
+            self.create_connection()
+            self.send_data()
+            if not self.keep_alive():
+                break
+

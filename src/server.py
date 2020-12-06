@@ -121,7 +121,11 @@ class ServerSide(object):
         """
         if self.set_socket():
             print(f"[LISTENING] port: {self.port}")
-            self.create_connection()
-            self.print_info()
-            self.listen()
-            self.process_data()
+            while True:
+                self.create_connection()
+                self.print_info()
+                self.listen()
+                self.process_data()
+                if not self.keep_alive():
+                    break
+            print("Ending connection.")
