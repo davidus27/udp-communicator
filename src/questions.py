@@ -34,7 +34,7 @@ def ask_for_data(data_type):
         return ask_for_file() # None, file path
     elif data_type == "M":
         message = input("Input the message: ").encode(const.CODING_FORMAT)
-        if message == "":
+        if message == b"":
             print("Write something.")
             return None
         return message, None
