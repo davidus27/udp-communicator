@@ -52,12 +52,15 @@ class ServerSide(object):
         """ Checking if all fragments were sent """
         return len(set(self.data)) == self.starting_header.fragments_amount
 
-    def print_progress(self) -> None:
+    def print_progress(self, index) -> None:
         """ Printing progress bar for estetics """
         if self.starting_header.data_type == b"F":
             progress = math.ceil(100 * len(self.data) / self.starting_header.fragments_amount)
-            sys.stdout.write("Downloading file : %d%%   \r" % (progress) )
+            sys.stdout.write(f"Downloading file : {progress}%. Currently received {index}. packet.   \r")
             sys.stdout.flush()
+        else:
+            sys.stdout.write(f"Currently received {index}. packet.   \r")
+            sys.stdout.flush() 
 
     def send_NACK(self, process_fragment) -> None:
         self.node.sendto(process_fragment.create_reply(const.NACK), self.address)
@@ -75,7 +78,7 @@ class ServerSide(object):
             self.send_ACK(processed_fragment)
         else:
             self.send_NACK(processed_fragment)
-        self.print_progress()
+        self.print_progress(processed_fragment.index)
 
     def listen(self):
         """ Listen on port for fragment, if recieved create new thread so it can be processed """
