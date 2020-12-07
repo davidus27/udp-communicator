@@ -4,9 +4,14 @@ import time
 import concurrent.futures
 
 class KeepAlive(object):
-    def __init__(self):
-        self._is_blocked = True # can't continue with keep alive
+    def __init__(self, port):
+        self._is_blocked = False # can't continue with keep alive
         self._can_continue = True # can't continue with communication
+        self.port = port
+        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def _set_socket(self):
+        self.node.bind(('', self.port))
 
     def communication_can_continue(self):
         return self._can_continue
@@ -37,7 +42,7 @@ class KeepAlive(object):
                 print("Ending with timeout")
                 self._stop_keep_alive()
             if response == const.KEEP_ALIVE:
-                #time.sleep(5)
+                time.sleep(const.KEEP_ALIVE_SLEEP)
                 self._send_keep_alive()
             elif response == const.START_COMMUNICATION:
                 print("Starting new communication.")
@@ -56,4 +61,4 @@ class KeepAlive(object):
             threads = [executor.submit(self.keep_alive_communication), executor.submit(self.ask_user)]
             # return first answer that came out
             for t in concurrent.futures.as_completed(threads):
-                t.result()
+                return t.result()

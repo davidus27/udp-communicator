@@ -19,10 +19,8 @@ Package = Group of fragments that are sent together
 class ClientSide(KeepAlive):
     # if changing arguments, you need to also change them in change_args... yeah... 
     def __init__(self, reciever: tuple, port: int, content: packing.Packaging, send_false_packets=False):
-        KeepAlive.__init__(self)
-        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        KeepAlive.__init__(self, port)
         self.address = reciever
-        self.port = port
         self.content = content
         self.data = content.get_fragment_generator()
         self.window = []
@@ -35,7 +33,7 @@ class ClientSide(KeepAlive):
 
     def _send_starting_message(self):
         try:
-            self.node.bind(('', self.port))
+            super()._set_socket()
         except OSError:
             pass
         self.node.settimeout(const.TIMEOUT)
@@ -79,9 +77,8 @@ class ClientSide(KeepAlive):
                 break
     
     def keep_alive_communication(self):
-        time.sleep(0.1)
         self._send_keep_alive()
-        KeepAlive().keep_alive_communication()
+        super().keep_alive_communication()
 
     def send_whole_window(self):
         # send all fragments from the window

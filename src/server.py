@@ -20,13 +20,11 @@ def get_file_name(path):
 
 class ServerSide(KeepAlive):
     def __init__(self, port):
-        KeepAlive.__init__(self)
-        self.port = port
+        KeepAlive.__init__(self, port)
         self.data = []
         self.address = None
         # starting header: fragment amount, fragment size, checksum, data type
         self.starting_header = None 
-        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     def process_data(self) -> None:
         """ Function to either print message, or save the recieved file """
@@ -45,7 +43,7 @@ class ServerSide(KeepAlive):
     def set_socket(self) -> None:
         """ Sets the socket binding with the posibility of resusing the same port """
         try:
-            self.node.bind(("", self.port))
+            super()._set_socket()
             self.node.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # fix of 'port already used'
             return self.node
         except PermissionError as e:
@@ -99,6 +97,9 @@ class ServerSide(KeepAlive):
                 thread = executor.submit(self.process_fragment, fragment)
                 thread.result()
         self.node.recvfrom(len(const.END))
+
+    def keep_alive_communication(self):
+        super().keep_alive_communication()
 
     def create_connection(self) -> None:
         """ Wait for start of connection """
