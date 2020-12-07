@@ -1,7 +1,9 @@
 import socket
 from concurrent.futures import ThreadPoolExecutor
+from keep_alive import KeepAlive
 import constants as const
 import packing
+import time
 from random import seed, random
 from fragments import *
 
@@ -14,30 +16,40 @@ fragment = one part of whole data
 Package = Group of fragments that are sent together
 """
 
-class ClientSide(object):
+class ClientSide(KeepAlive):
+    # if changing arguments, you need to also change them in change_args... yeah... 
     def __init__(self, reciever: tuple, port: int, content: packing.Packaging, send_false_packets=False):
-        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        self.reciever = reciever
+        KeepAlive.__init__(self)
+        self.node = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.address = reciever
         self.port = port
         self.content = content
         self.data = content.get_fragment_generator()
         self.window = []
         self.send_false_packets = send_false_packets
 
+    def change_args(self, content: packing.Packaging, send_false_packets=False):
+        self.content = content
+        self.send_false_packets = send_false_packets
+        self.data = content.get_fragment_generator()
+
     def _send_starting_message(self):
-        self.node.bind(('', self.port))
+        try:
+            self.node.bind(('', self.port))
+        except OSError:
+            pass
         self.node.settimeout(const.TIMEOUT)
-        self.node.sendto(self.content.get_starting_fragment(), self.reciever)
+        self.node.sendto(self.content.get_starting_fragment(), self.address)
         if self.content.header_info[1] == b'F':
             print("Sending file", self.content.header_info[2].decode(const.CODING_FORMAT))
 
     def _send_fragment(self, index, fragment):
         # randomly generate wrong response if setup
         if self.send_false_packets and random() < const.WRONG_PACKET_RATIO:
-            self.node.sendto(self.content.get_wrong_data_fragment(index, fragment), self.reciever)    
+            self.node.sendto(self.content.get_wrong_data_fragment(index, fragment), self.address)    
         else:
             # send correct response
-            self.node.sendto(self.content.get_data_fragment(index, fragment), self.reciever)
+            self.node.sendto(self.content.get_data_fragment(index, fragment), self.address)
 
     def process_response(self, response, index) -> bool:
         processed_reply = ReplyFragment(response)
@@ -54,7 +66,7 @@ class ClientSide(object):
         elif processed_reply.has_valid_checksum() and processed_reply.data_type == const.NACK:
             print("Caught NACK. Sending packet again.")
             corrected_data = list(filter(lambda x: x[0] == processed_reply.index, self.window))[0][1]
-            self.node.sendto(self.content.get_data_fragment(processed_reply.index, corrected_data), self.reciever)
+            self.node.sendto(self.content.get_data_fragment(processed_reply.index, corrected_data), self.address)
         else:
             print("Error, unknown packet found.")
         return False
@@ -66,13 +78,15 @@ class ClientSide(object):
             if response == const.ACK:
                 break
     
-    def keep_alive(self):
-        pass
+    def keep_alive_communication(self):
+        time.sleep(0.1)
+        self._send_keep_alive()
+        KeepAlive().keep_alive_communication()
 
     def send_whole_window(self):
         # send all fragments from the window
         for fragment in self.window:
-            self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.reciever)
+            self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.address)
         
     def send_data(self):
         # Fill empty window
@@ -95,12 +109,9 @@ class ClientSide(object):
                     thread.result()
             except socket.timeout:
                 self.send_whole_window()
-        self.node.sendto(const.END, self.reciever)
+        self.node.sendto(const.END, self.address)
 
     def handle_communication(self):
-        while True:
-            self.create_connection()
-            self.send_data()
-            if not self.keep_alive():
-                break
+        self.create_connection()
+        self.send_data()
 

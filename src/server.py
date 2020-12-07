@@ -1,11 +1,14 @@
 from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 from packing import calculate_checksum
 import socket
 import time
 import math
 import sys
 import ntpath
+import time
 import constants as const
+from keep_alive import KeepAlive
 from fragments import *
 
 def get_file_name(path):
@@ -15,8 +18,9 @@ def get_file_name(path):
     return None
 
 
-class ServerSide(object):
+class ServerSide(KeepAlive):
     def __init__(self, port):
+        KeepAlive.__init__(self)
         self.port = port
         self.data = []
         self.address = None
@@ -29,7 +33,8 @@ class ServerSide(object):
         self.data.sort(key=lambda x : x[0])
         self.data = list(map(lambda x : x[1], self.data))
         if self.starting_header.data_type == b"M":
-            print(b"".join(self.data).decode(const.CODING_FORMAT)) # TODO: CHECK IF CORRECT 
+            print()
+            print(b"".join(self.data).decode(const.CODING_FORMAT))
         else:
             # slice absolute file path and save only name
             file_path = get_file_name(self.starting_header.file_path)
@@ -47,6 +52,8 @@ class ServerSide(object):
             print(e)
         except (ValueError, TypeError):
             print("Unknown port.")
+        except OSError:
+            return self.node # already binded
 
     def recieved_everything(self) -> bool:
         """ Checking if all fragments were sent """
@@ -56,7 +63,7 @@ class ServerSide(object):
         """ Printing progress bar for estetics """
         if self.starting_header.data_type == b"F":
             progress = math.ceil(100 * len(self.data) / self.starting_header.fragments_amount)
-            sys.stdout.write(f"Downloading file : {progress}%. Currently received {index}. packet.   \r")
+            sys.stdout.write(f"Downloading file : {progress}%. Received {index}. packet.   \r")
             sys.stdout.flush()
         else:
             sys.stdout.write(f"Currently received {index}. packet.   \r")
@@ -64,7 +71,7 @@ class ServerSide(object):
 
     def send_NACK(self, process_fragment) -> None:
         self.node.sendto(process_fragment.create_reply(const.NACK), self.address)
-        print("Wrong checksum. Sending NACK.")
+        print(f"Wrong checksum of fragment {process_fragment.index}. Sending NACK.")
 
     def send_ACK(self, process_fragment) -> None:
         self.node.sendto(process_fragment.create_reply(const.ACK), self.address)
@@ -91,6 +98,7 @@ class ServerSide(object):
             with ThreadPoolExecutor(max_workers=const.MAXIMUM_THREADS) as executor: 
                 thread = executor.submit(self.process_fragment, fragment)
                 thread.result()
+        self.node.recvfrom(len(const.END))
 
     def create_connection(self) -> None:
         """ Wait for start of connection """
@@ -111,8 +119,6 @@ class ServerSide(object):
         print("Size of framgents:", self.starting_header.fragment_size)
         print("Amount of fragments:", self.starting_header.fragments_amount)
 
-    def keep_alive(self):
-        pass
 
     def handle_communication(self) -> None:
         """ 
@@ -121,11 +127,7 @@ class ServerSide(object):
         """
         if self.set_socket():
             print(f"[LISTENING] port: {self.port}")
-            while True:
-                self.create_connection()
-                self.print_info()
-                self.listen()
-                self.process_data()
-                if not self.keep_alive():
-                    break
-            print("Ending connection.")
+            self.create_connection()
+            self.print_info()
+            self.listen()
+            self.process_data()

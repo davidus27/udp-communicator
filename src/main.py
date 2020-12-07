@@ -7,6 +7,7 @@ class SettingStrategy():
     def __init__(self):
         self._strategy = None
         self.arguments = []
+        self.keep_alive_disabled = None
 
     def get_strategy(self):
         """
@@ -23,15 +24,13 @@ class SettingStrategy():
                             self._get_header(),
                             ask_for_test()]
             # based on what will be in implementation
+            # if you are going to change arguments, also change them in change_args
             #self.arguments.append(ask_for_implementation())
         return self._strategy(*self.arguments)
 
     def _get_header(self):
         header = ask_for_header_info()
         return Packaging(header[0], header[1:])
-    def clear_options(self):
-        self.arguments = []
-        self._strategy = None
         
     def ask_for_strategy(self):
         side = input("Do you want to run as server or a client? [S/c]: ").upper()
@@ -43,19 +42,42 @@ class SettingStrategy():
             return False
         return True
     
+    def user_want_to_stop(self):
+        if input("Press q for ending session, or any key to continue.").upper() == "Q":
+            return True
+        else:
+            return False
+
+    def ask_questions(self):
+        self.ask_for_strategy()
+        strategy = self.get_strategy()
+        self.keep_alive_disabled = ask_for_keep_alive()
+        return strategy
+
     def execute_side(self):
         """
         Execute sides needed parts
         """
+        strategy = self.ask_questions()
         while True:
-            if self.ask_for_strategy():
-                self.get_strategy().handle_communication()
+            strategy.handle_communication()
+            if self.keep_alive_disabled:
+                if self.user_want_to_stop():
+                    return
+                strategy = self.ask_questions()
             else:
-                break
-            if input("Press q for ending session, or any key to continue.") == "q":
-                break
-            self.clear_options()
+                strategy.keep_alive()
+                if not strategy.communication_can_continue():
+                    # keep alive is indicating to stop
+                    return
+                if self._strategy is ClientSide:
+                    # this is terrible, but should work
+                    self.arguments = [self._get_header(),
+                                    ask_for_test()]
+                    # ask_for_implementation()
+                    strategy.change_args(*self.arguments)
 
-
+           
+            
 if __name__ == "__main__":
     SettingStrategy().execute_side()

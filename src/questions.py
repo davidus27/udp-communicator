@@ -99,6 +99,16 @@ def ask_for_test():
     else:
         return None
 
+@ask_again
+def ask_for_keep_alive():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to disable keep alive?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
+        return None
 
 @ask_again
 def ask_for_implementation():
