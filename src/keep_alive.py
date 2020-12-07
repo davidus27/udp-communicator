@@ -31,7 +31,7 @@ class KeepAlive(object):
         else:
             self.node.sendto(const.START_COMMUNICATION, self.address)
             self._can_continue = True
-        self._is_blocked = False
+        self._is_blocked = True
 
     def keep_alive_communication(self):
         while not self._is_blocked:

@@ -36,7 +36,6 @@ class ClientSide(KeepAlive):
             super()._set_socket()
         except OSError:
             pass
-        self.node.settimeout(const.TIMEOUT)
         self.node.sendto(self.content.get_starting_fragment(), self.address)
         if self.content.header_info[1] == b'F':
             print("Sending file", self.content.header_info[2].decode(const.CODING_FORMAT))
@@ -82,6 +81,7 @@ class ClientSide(KeepAlive):
 
     def send_whole_window(self):
         # send all fragments from the window
+        self.node.settimeout(const.TIMEOUT)
         for fragment in self.window:
             self.node.sendto(self.content.get_data_fragment(fragment[0], fragment[1]), self.address)
         

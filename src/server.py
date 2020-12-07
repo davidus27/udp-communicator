@@ -26,6 +26,10 @@ class ServerSide(KeepAlive):
         # starting header: fragment amount, fragment size, checksum, data type
         self.starting_header = None 
     
+    def _clear_data(self):
+        self.data = []
+        self.starting_header = None
+
     def process_data(self) -> None:
         """ Function to either print message, or save the recieved file """
         self.data.sort(key=lambda x : x[0])
@@ -39,6 +43,7 @@ class ServerSide(KeepAlive):
             with open(file_path, "wb+") as f:
                 for d in self.data:
                     f.write(d)
+        self._clear_data()
 
     def set_socket(self) -> None:
         """ Sets the socket binding with the posibility of resusing the same port """
@@ -105,6 +110,8 @@ class ServerSide(KeepAlive):
         """ Wait for start of connection """
         while True:
             initial_fragment, self.address = self.node.recvfrom(const.MAX_STARTING_HEADER_SIZE)
+            if len(initial_fragment) < const.STARTING_HEADER_SIZE:
+                continue
             starting_header = StartingFragment(initial_fragment)
             if starting_header.has_valid_checksum():
                 self.starting_header = starting_header
