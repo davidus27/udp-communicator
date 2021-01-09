@@ -5,8 +5,12 @@ CODING_FORMAT = "utf-8"
 # REWRITE
 ACK = b"A"
 NACK = b"N"
-KEEP_ALIVE = b"K"
-END = b"\xff"
+END = b"E"
+KEEP_ALIVE = b"KA"
+END_BY_USER = b"EU"
+END_BY_TIMEOUT = b"ET"
+START_COMMUNICATION = b"S"
+ENDING_MESSAGE_LEN = len(KEEP_ALIVE)
 
 REPLY_HEADER = "IHc" # Fragment index + Checksum + Reply Type
 
@@ -22,10 +26,14 @@ DATA_HEADER_SIZE = struct.calcsize(DATA_HEADER)
 MAX_STARTING_HEADER_SIZE = 255 + STARTING_HEADER_SIZE
 
 
-MIN_FRAGMENT_SIZE = 12
+MIN_FRAGMENT_SIZE = 1
 MAX_FRAGMENT_SIZE = 1466
 
+# what ratio of packets should be randomly sent with wrong checkum
+WRONG_PACKET_RATIO = 0.05
 
 MAXIMUM_THREADS = 5
-# TODO : delete
-SEGMENTS_AMOUNT = 10
+FRAGMENTS_AMOUNT = 10
+TIMEOUT = 1.5 # 1.5 seconds for sending Starting header
+KEEP_ALIVE_TIMEOUT = 30
+KEEP_ALIVE_SLEEP = 10

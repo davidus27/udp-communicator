@@ -1,38 +1,65 @@
 import constants as const
 from socket import gethostbyname, gethostname
 
+import pathlib
+import os
+
 # Getting input from the files
 
 def ask_again(function):
     def decorate(*args):
         result = None
-        while not result:
+        while result is None:
             result = function(*args)
-            if not result:
+            if result is None:
                 print("Wrong input. Try again.")
         return result
     return decorate     
+
+
+def user_want_to_stop(self):
+    return input("Press q for ending session, or any key to continue.").upper() == "Q"
+
+@ask_again
+def ask_for_strategy():
+    side = input("Do you want to run as server or a client? [S/c]: ").upper()
+    correct_options = "CSQ" # Correct options: Client, Server, Quit  
+    if side == "": return "S" # default value is Server
+    elif side in correct_options:
+        return side
+    return None
+
 
 @ask_again
 def ask_for_file():
     data = None
     file_path = input("Input file path: ").encode(const.CODING_FORMAT)
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return data, file_path
+    p = pathlib.Path(file_path.decode(const.CODING_FORMAT))
+    if p.is_file():
+        return None, os.path.abspath(file_path) # get absolute path
+    else:
+        print("File path not found.")
+        return None
 
 @ask_again
 def ask_for_data(data_type):
-    if data_type.upper() == "F":
-        return ask_for_file() # data, file_path
-    elif data_type.upper() == "M":
+    data_type = data_type.upper()
+    if data_type == "F":
+        return ask_for_file() # None, file path
+    elif data_type == "M":
         message = input("Input the message: ").encode(const.CODING_FORMAT)
+        if message == b"":
+            print("Write something.")
+            return None
         return message, None
     return None
 
 @ask_again
 def ask_for_fragment_size():
-    fragment_size = int(input(f"Input fragment size {const.MIN_FRAGMENT_SIZE} - {const.MAX_FRAGMENT_SIZE}: "))
+    try:
+        fragment_size = int(input(f"Input fragment size {const.MIN_FRAGMENT_SIZE} - {const.MAX_FRAGMENT_SIZE}: "))
+    except:
+        return None
     if fragment_size < const.MIN_FRAGMENT_SIZE or fragment_size > const.MAX_FRAGMENT_SIZE:
         print("Wrong input")
         return None
@@ -40,28 +67,70 @@ def ask_for_fragment_size():
 
 @ask_again
 def ask_for_header_info():
-    data_type = input("Do you want to send file or message? [M/f]: ")
+    data_type = input("Do you want to send file or message? [M/f]: ").upper()
     if data_type == "":
         data_type = "M"
     data, file_path = ask_for_data(data_type)
     fragment_size = ask_for_fragment_size()
+    data_type = data_type.encode(const.CODING_FORMAT)
+    return data, fragment_size, data_type, file_path
 
-    data_type = data_type.upper().encode(const.CODING_FORMAT)
+@ask_again
+def ask_for_port():
+    port = input("Input server port[5555]: ")
+    if port != "":
+        try:
+            return int(port)
+        except:
+            return None
+    return 5555
 
-    if file_path:
-        return data, fragment_size, data_type, file_path 
-    else:
-        return data, fragment_size, data_type
-
+@ask_again
+def ask_for_listening_port():
+    port = input("Input your port[7777]: ")
+    if port != "":
+        try:
+            return int(port)
+        except:
+            return None
+    return 7777
 
 @ask_again
 def ask_for_recipient():
-    ip = input("Input ip address: ")
-    if ip == "localhost":
+    ip = input("Input ip address[localhost]: ")
+    if ip == "localhost" or ip == "":
         ip = gethostbyname(gethostname()) #local ip
-    
-    try:
-        port = int(input("Input port number: "))
-    except:
+    return ip, ask_for_port()
+
+@ask_again
+def ask_for_test():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to start a test?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
         return None
-    return ip, port
+
+@ask_again
+def ask_for_keep_alive():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to disable keep alive?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
+        return None
+
+@ask_again
+def ask_for_implementation():
+    """ Returns boolean value based on input, None if wrong value """
+    answer = input("Do you want to test implementation?[y/N]: ").upper()
+    if answer == "Y":
+        return True
+    elif answer == "N" or answer == "":
+        return False
+    else:
+        return None

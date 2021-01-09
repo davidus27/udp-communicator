@@ -1,54 +1,67 @@
 from server import ServerSide
 from client import ClientSide
 from packing import Packaging
-import questions
+from questions import *
 
 class SettingStrategy():
     def __init__(self):
         self._strategy = None
         self.arguments = []
-
-    def add_data_info(self):
-        args = None
-        while not args:
-            args = self._ask_for_header_info()
-        self.arguments.append(Packaging(args[0], args[1:]))
+        self.keep_alive_disabled = None
 
     def get_strategy(self):
+        """
+        Adds outputs from questions to the list of arguments for
+        specific strategy
+        """ 
         if self._strategy is ServerSide:
-            self.arguments.append(int(input("Input port: ")))
-        elif self._strategy is ClientSide:
-            self.arguments.append(questions.ask_for_recipient())
+            self.arguments = [ask_for_port()]
 
-            header = questions.ask_for_header_info()
-            self.arguments.append(Packaging(header[0], header[1:]))
-        else:
-            print("Error.")
+        elif self._strategy is ClientSide:
+            self.arguments = [ask_for_recipient(), 
+                            ask_for_listening_port(),
+                            self._get_header(),
+                            ask_for_test()]
         return self._strategy(*self.arguments)
 
-    def clear_options(self):
-        self.arguments = []
-        self._strategy = None
-        
+    def _get_header(self):
+        header = ask_for_header_info()
+        return Packaging(header[0], header[1:])
+    
+    def set_strategy(self):
+        side = ask_for_strategy()
+        options = {"C": ClientSide, "S":ServerSide, "Q": False}
+        self._strategy = options[side]
+        return True
+    
+    def ask_questions(self):
+        self.set_strategy()
+        if self._strategy:
+            strategy = self.get_strategy()
+            self.keep_alive_disabled = ask_for_keep_alive()
+            return strategy
+
     def execute_side(self):
         """
         Execute sides needed parts
         """
-        while True:
-            side = input("Do you want to run as server or a client? [S/c]: ")
-            if side.upper() == "C":
-                self._strategy = ClientSide
-                self.get_strategy().send_data()
-            elif side.upper() == "S" or side == "":
-                self._strategy = ServerSide
-                self.get_strategy().start_listening()
-            elif side.upper() == "Q":
-                break
-            if input("Press q for ending session, or any key to continue.") == "q":
-                break
-            self.clear_options()
-
-
+        strategy = self.ask_questions()
+        while strategy:
+            strategy.handle_communication()
+            if self.keep_alive_disabled:
+                if user_want_to_stop():
+                    return
+                strategy = self.ask_questions()
+            else:
+                strategy.keep_alive()
+                if not strategy.communication_can_continue():
+                    # keep alive is indicating to stop
+                    return
+                if self._strategy is ClientSide:
+                    # this is terrible, but should work
+                    self.arguments = [self._get_header(),
+                                    ask_for_test()]
+                    strategy.change_args(*self.arguments)
+            
 if __name__ == "__main__":
-    context = SettingStrategy()
-    context.execute_side()
+    SettingStrategy().execute_side()
