@@ -16,6 +16,20 @@ def ask_again(function):
         return result
     return decorate     
 
+
+def user_want_to_stop(self):
+    return input("Press q for ending session, or any key to continue.").upper() == "Q"
+
+@ask_again
+def ask_for_strategy():
+    side = input("Do you want to run as server or a client? [S/c]: ").upper()
+    correct_options = "CSQ" # Correct options: Client, Server, Quit  
+    if side == "": return "S" # default value is Server
+    elif side in correct_options:
+        return side
+    return None
+
+
 @ask_again
 def ask_for_file():
     data = None
